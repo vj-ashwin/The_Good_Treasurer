@@ -5,11 +5,19 @@
  * owns the configured, persistently cached instance the app passes in.
  */
 
-export { createTrip, getTrip, watchTrips } from './trips'
-export type { CreatedTrip } from './trips'
+export { createTrip, createTripWithPeople, getTrip, watchTrips } from './trips'
+export type { CreatedTrip, NewTrip } from './trips'
 export { addPerson, watchPeople } from './people'
 export type { CreatedPerson, NewPerson } from './people'
-export { parsePerson, parseTrip, PERSON_NAME_MAX, TRIP_NAME_MAX, DataError, ValidationError } from './models'
+export {
+  parsePerson,
+  parseTrip,
+  requireName,
+  PERSON_NAME_MAX,
+  TRIP_NAME_MAX,
+  DataError,
+  ValidationError,
+} from './models'
 export type { Person, Trip } from './models'
 export { isUuid, newId } from './ids'
-export { describeFirestoreError, firestoreErrorCode, isOfflineError } from './errors'
+export { describeError, describeFirestoreError, firestoreErrorCode, isOfflineError } from './errors'

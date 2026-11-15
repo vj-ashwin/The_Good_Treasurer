@@ -18,40 +18,96 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
+  writeBatch,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { newId } from './ids'
-import { parseTrip, requireName, TRIP_NAME_MAX, type Trip } from './models'
-import { tripPath, tripsPath } from './paths'
+import {
+  parseTrip,
+  requireName,
+  PERSON_NAME_MAX,
+  TRIP_NAME_MAX,
+  ValidationError,
+  type Trip,
+} from './models'
+import { peoplePath, tripPath, tripsPath } from './paths'
 
 /** What a successful create returns. The full document arrives via the listener. */
 export interface CreatedTrip {
   id: string
 }
 
+/** The most people a trip can be created with in one go. */
+const MAX_PEOPLE_AT_CREATE = 50
+
+/** Trip name plus the people the organiser typed on the create screen. */
+export interface NewTrip {
+  name: string
+  /** Display names in the order entered. The first one becomes the organiser. */
+  people?: readonly string[]
+}
+
 /**
- * Creates a trip and returns its client-generated id.
+ * Creates a trip and its starting people in one atomic batch.
  *
- * The id is minted before the write, so a retry targets the same document and
+ * A batch means a rejected person name can never leave a half-created trip
+ * behind: all documents land or none do. The first person is the organiser
+ * (`isOrganizer: true`), which is what makes the create screen's "you, then
+ * everyone else" order meaningful.
+ *
+ * Ids are minted before the write, so a retry targets the same documents and
  * can never create a second trip. The rules pin `createdAt` to the first
  * write, so a retried create that sends a new server timestamp is rejected as
  * an update rather than silently applied. `tests/firestore.service.rules.test.ts`
  * pins that behaviour; the offline-retry UX is a separate decision.
  */
+export async function createTripWithPeople(
+  db: Firestore,
+  uid: string,
+  input: NewTrip,
+): Promise<{ id: string; personIds: string[] }> {
+  const name = requireName(input.name, TRIP_NAME_MAX, 'Trip name')
+  const people = input.people ?? []
+  if (people.length > MAX_PEOPLE_AT_CREATE) {
+    throw new ValidationError(
+      `A trip can start with at most ${String(MAX_PEOPLE_AT_CREATE)} people.`,
+    )
+  }
+  const personNames = people.map((person, index) =>
+    requireName(person, PERSON_NAME_MAX, `Person ${String(index + 1)} name`),
+  )
+
+  const tripId = newId()
+  const personIds = personNames.map(() => newId())
+  const batch = writeBatch(db)
+
+  batch.set(doc(db, tripsPath(uid), tripId), {
+    name,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+
+  personNames.forEach((personName, index) => {
+    batch.set(doc(db, peoplePath(uid, tripId), personIds[index]), {
+      name: personName,
+      isOrganizer: index === 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+  })
+
+  await batch.commit()
+  return { id: tripId, personIds }
+}
+
+/** Creates a trip with no people yet. */
 export async function createTrip(
   db: Firestore,
   uid: string,
   nameInput: string,
 ): Promise<CreatedTrip> {
-  const name = requireName(nameInput, TRIP_NAME_MAX, 'Trip name')
-  const id = newId()
-  await setDoc(doc(db, tripsPath(uid), id), {
-    name,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
+  const { id } = await createTripWithPeople(db, uid, { name: nameInput })
   return { id }
 }
 

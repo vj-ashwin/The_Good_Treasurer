@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { describeFirestoreError, firestoreErrorCode, isOfflineError } from './errors'
+import { describeError, describeFirestoreError, firestoreErrorCode, isOfflineError } from './errors'
+import { DataError, ValidationError } from './models'
 
 const withCode = (code: string) => Object.assign(new Error('raw sdk message'), { code })
 
@@ -52,5 +53,24 @@ describe('describeFirestoreError', () => {
 
   it('recognises an uncoded offline message', () => {
     expect(describeFirestoreError(new Error('client is offline'))).toMatch(/offline/)
+  })
+})
+
+describe('describeError', () => {
+  it('passes a validation message straight through for the form', () => {
+    expect(describeError(new ValidationError('Trip name cannot be empty.'))).toBe(
+      'Trip name cannot be empty.',
+    )
+  })
+
+  it('names corrupt stored data instead of hiding it', () => {
+    expect(describeError(new DataError('Trip document t1 has no data.'))).toMatch(
+      /Stored data could not be read.*Trip document t1/,
+    )
+  })
+
+  it('falls back to the Firestore mapping for everything else', () => {
+    expect(describeError(withCode('permission-denied'))).toMatch(/permission/)
+    expect(describeError(new Error('boom'))).toMatch(/retry/i)
   })
 })

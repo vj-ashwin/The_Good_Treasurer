@@ -28,6 +28,7 @@ import {
 import {
   addPerson,
   createTrip,
+  createTripWithPeople,
   getTrip,
   isUuid,
   ValidationError,
@@ -138,6 +139,45 @@ describe('createTrip', () => {
 
     expect((await getDocs(collection(db, 'users', OWNER, 'trips'))).size).toBe(1)
     expect((await getTrip(db, OWNER, id))?.name).toBe('Goa 2026')
+  })
+})
+
+describe('createTripWithPeople', () => {
+  test('creates the trip and four people in one batch, first person is organiser', async () => {
+    const db = asOwner()
+    const { id, personIds } = await createTripWithPeople(db, OWNER, {
+      name: 'Goa 2026',
+      people: ['Alice', 'Bob', 'Carol', 'Dave'],
+    })
+
+    expect((await getTrip(db, OWNER, id))?.name).toBe('Goa 2026')
+    expect(personIds).toHaveLength(4)
+
+    const people = await Promise.all(
+      personIds.map((personId) =>
+        getDoc(doc(db, 'users', OWNER, 'trips', id, 'people', personId)),
+      ),
+    )
+    expect(people.map((person) => person.data()?.name)).toEqual([
+      'Alice',
+      'Bob',
+      'Carol',
+      'Dave',
+    ])
+    expect(people.map((person) => person.data()?.isOrganizer)).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ])
+  })
+
+  test('rejects an invalid person name before writing anything', async () => {
+    const db = asOwner()
+    await expect(
+      createTripWithPeople(db, OWNER, { name: 'Goa 2026', people: ['Alice', '   '] }),
+    ).rejects.toBeInstanceOf(ValidationError)
+    expect((await getDocs(collection(db, 'users', OWNER, 'trips'))).size).toBe(0)
   })
 })
 

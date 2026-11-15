@@ -1,55 +1,52 @@
 import { useAuth } from '../hooks/useAuth'
-import { BrandMark, LogoutIcon } from '../components/icons'
+import AppShell from '../components/AppShell'
+import { LuggageIcon, PlusIcon } from '../components/icons'
 
-/**
- * Trip list + sidebar. Milestone 4 fills in the trip list, create-trip flow,
- * and open-trip navigation. For now this page proves the signed-in shell:
- * persistent session, user identity, and sign-out.
- */
+/** Trip list landing pane. The sidebar holds the actual list. */
 export default function TripListPage() {
   const { user, signOutUser } = useAuth()
 
+  if (!user) return null
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <BrandMark className="h-9 w-9" />
-            <div>
-              <p className="text-base font-semibold tracking-tight text-slate-900">
-                The Good Treasurer
-              </p>
-              <p className="text-xs text-slate-500">Trip expense ledger</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-medium text-slate-800">
-                {user?.displayName || user?.email || 'Treasurer'}
-              </p>
-              <p className="text-xs text-slate-500">{user?.email}</p>
-            </div>
-            <button
-              type="button"
-              onClick={signOutUser}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none"
-            >
-              <LogoutIcon />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-          <p className="text-sm font-medium text-slate-700">No trips yet</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Trip list and create-trip arrive in Milestone 4.
+    <AppShell user={user} onSignOut={signOutUser}>
+      {(openCreateTrip) => (
+        <div className="mx-auto max-w-3xl">
+          <p className="text-xs font-semibold tracking-wide text-brand-600 uppercase">
+            Trip ledger
           </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            Pick a trip, or start a new one
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
+            Every trip keeps its own people, expenses and settlement. The sidebar lists them
+            newest first and keeps working from this device when you are offline.
+          </p>
+
+          <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <LuggageIcon className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-slate-900">Create a trip</h2>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                  Name the trip and add everyone splitting the costs. The first person is the
+                  organiser.
+                </p>
+                <button
+                  type="button"
+                  onClick={openCreateTrip}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none"
+                >
+                  <PlusIcon />
+                  New trip
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
-      </main>
-    </div>
+      )}
+    </AppShell>
   )
 }

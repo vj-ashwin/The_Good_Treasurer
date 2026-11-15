@@ -7,6 +7,8 @@
  * environment-specific can leak into the UI.
  */
 
+import { DataError, ValidationError } from './models'
+
 export interface FirestoreErrorLike {
   code?: unknown
   message?: unknown
@@ -65,4 +67,17 @@ export function describeFirestoreError(error: unknown): string {
       }
       return 'Something went wrong saving your changes. Please retry.'
   }
+}
+
+/**
+ * One sentence for any failure the UI can catch.
+ *
+ * Validation messages are written for the organiser, so they pass through as-is.
+ * A `DataError` names the document that is corrupt — safe to show and far more
+ * useful than a generic retry. Everything else is a Firestore failure.
+ */
+export function describeError(error: unknown): string {
+  if (error instanceof ValidationError) return error.message
+  if (error instanceof DataError) return `Stored data could not be read. ${error.message}`
+  return describeFirestoreError(error)
 }

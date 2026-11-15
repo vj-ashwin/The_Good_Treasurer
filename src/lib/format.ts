@@ -10,6 +10,21 @@ export function formatDate(isoDate: string): string {
   })
 }
 
+/**
+ * Formats epoch milliseconds for display.
+ *
+ * `0` means the document is a local write whose `serverTimestamp()` has not
+ * been acknowledged yet, so the UI says so rather than showing 1 January 1970.
+ */
+export function formatTimestamp(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return 'Not synced yet'
+  return new Date(ms).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 /** Today as an `YYYY-MM-DD` string, used as the default value for date inputs. */
 export function todayIso(): string {
   const now = new Date()
