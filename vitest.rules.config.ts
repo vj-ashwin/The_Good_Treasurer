@@ -8,6 +8,10 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.rules.test.ts'],
+    // Both suites share one Firestore emulator and each test wipes the whole
+    // database in `beforeEach`. Running the files in parallel makes one file
+    // delete the other's fixtures mid-test, so the emulator suite is serial.
+    fileParallelism: false,
     // The emulator is local, but batch commits and rule evaluation are slower
     // than in-memory unit tests.
     testTimeout: 20_000,
