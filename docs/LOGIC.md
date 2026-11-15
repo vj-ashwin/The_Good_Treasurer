@@ -92,6 +92,13 @@ function calcLineItemTax(
 }
 ```
 
+**Source of truth for tax**: tax is always calculated per line item and summed. An equal
+or exact split is a single implicit line item, so the stored `gstAmountPaise` and
+`serviceChargeAmountPaise` are always the sums of the per-line tax, and
+`totalPaise = baseAmountPaise + gstAmountPaise + serviceChargeAmountPaise` holds with no
+second rounding step. Never compute tax twice (once on the bill, once per line) — the two
+results differ by up to half a paise per line.
+
 **Worked Example** (CUJ 2): Dinner ₹3,200 (320,000 paise), GST 18% (1800 bps), SC 10% (1000 bps), 4 participants.
 
 ```
@@ -111,7 +118,7 @@ function calculateEqualSplit(totalPaise: number, participantCount: number): numb
   const base = Math.floor(totalPaise / participantCount);
   const remainder = totalPaise % participantCount;
   const shares = Array(participantCount).fill(base);
-  // Largest-remainder: first `remainder` participants get +1 paise
+  // Largest-remainder: the `remainder` participants with the lowest `personId` get +1 paise
   for (let i = 0; i < remainder; i++) shares[i] += 1;
   return shares;
 }
@@ -155,48 +162,73 @@ interface LineItemInput {
   description: string;
   amountPaise: number;
   consumerIds: PersonId[];
+  /** Per-line override. 0 means "untaxed"; null/undefined means "use the bill rate". */
+  gstBps?: number | null;
+  scBps?: number | null;
+}
+
+interface ItemizedResult {
+  shares: Record<PersonId, number>;
+  basePaise: number;
+  gstPaise: number;
+  serviceChargePaise: number;
+  totalPaise: number;
 }
 
 function calculateItemizedSplit(
   lineItems: LineItemInput[],
   participantIds: PersonId[], // all trip participants (for zero-share init)
-  gstBps?: number,
-  scBps?: number
-): Record<PersonId, number> {
+  billGstBps?: number | null,
+  billScBps?: number | null
+): ItemizedResult {
   const shares: Record<PersonId, number> = {};
   participantIds.forEach(id => shares[id] = 0);
 
+  let basePaise = 0, gstPaise = 0, serviceChargePaise = 0;
+
   for (const item of lineItems) {
-    const consumers = item.consumerIds;
-    const n = consumers.length;
-    if (n === 0) throw new Error('Line item must have at least one consumer');
-
-    // Base split
-    const baseShare = item.amountPaise / n; // may not divide evenly
-    const baseFloor = Math.floor(item.amountPaise / n);
-    const baseRemainder = item.amountPaise % n;
-    consumers.forEach((id, i) => {
-      shares[id] += baseFloor + (i < baseRemainder ? 1 : 0);
-    });
-
-    // Tax per line item (if any)
-    if (item.gstBps || item.scBps) {
-      const { gstPaise, scPaise, totalTaxPaise } = calcLineItemTax(
-        item.amountPaise,
-        item.gstBps,
-        item.scBps
-      );
-      const taxShare = totalTaxPaise / n;
-      const taxFloor = Math.floor(totalTaxPaise / n);
-      const taxRemainder = totalTaxPaise % n;
-      consumers.forEach((id, i) => {
-        shares[id] += taxFloor + (i < taxRemainder ? 1 : 0);
-      });
+    const consumers = [...item.consumerIds].sort(); // lowest personId first
+    if (consumers.length === 0) throw new Error('Line item must have at least one consumer');
+    if (!Number.isSafeInteger(item.amountPaise) || item.amountPaise <= 0) {
+      throw new Error('Line item amount must be positive integer paise');
     }
+
+    // Tax for this line only: its own rate, else the bill rate, else no tax.
+    const gst = calcTaxPaise(item.amountPaise, item.gstBps ?? billGstBps ?? 0);
+    const sc = calcTaxPaise(item.amountPaise, item.scBps ?? billScBps ?? 0);
+
+    // Largest-remainder per component: base, GST, SC.
+    const addShares = (total: number) => {
+      const floor = Math.floor(total / consumers.length);
+      const remainder = total % consumers.length;
+      consumers.forEach((id, i) => {
+        shares[id] += floor + (i < remainder ? 1 : 0);
+      });
+    };
+
+    addShares(item.amountPaise);
+    addShares(gst);
+    addShares(sc);
+
+    basePaise += item.amountPaise;
+    gstPaise += gst;
+    serviceChargePaise += sc;
   }
-  return shares;
+
+  return {
+    shares,
+    basePaise,
+    gstPaise,
+    serviceChargePaise,
+    totalPaise: basePaise + gstPaise + serviceChargePaise,
+  };
 }
 ```
+
+**Sharing model**: base and each tax component are distributed separately, so a
+participant's share can differ by one paise from splitting `totalPaise` in a single step.
+That is intentional and harmless: the invariant that must hold is
+`sum(shares) === totalPaise`, and it does. Tax is never allocated twice — see §2.1.
 
 **Worked Example** (CUJ 4): Groceries ₹2,400 (240,000 paise), no tax. 4 people (Alice, Bob, Carol, Dave).
 
@@ -272,8 +304,7 @@ function computeBalances(
 
   for (const exp of expenses) {
     if (exp.deletedAt) continue;
-    const total = exp.baseAmountPaise + exp.gstAmountPaise + exp.serviceChargeAmountPaise;
-    
+
     // Paid
     const paidMap = paid.get(exp.payerId) ?? 0;
     paid.set(exp.payerId, paidMap + exp.baseAmountPaise + exp.gstAmountPaise + exp.serviceChargeAmountPaise);
@@ -299,13 +330,17 @@ function computeBalances(
     });
   }
   
-  // Verify zero sum
-  const netSum = balances.reduce((a, b) => a + b.netPaise, 0);
-  if (netSum !== 0) throw new Error('Balance sum not zero');
-  
+  // Never throw on a non-zero sum: a share can reference a person who is no longer in
+  // `people`, and throwing would permanently break the report for every later reader.
+  // Return the balances and expose the difference so the UI can warn instead.
   return balances;
 }
 ```
+
+`sum(netPaise)` is zero for consistent data. `balanceDifferencePaise(balances)` is the
+explicit check: it returns that sum, and the report shows a data warning when it is not
+zero rather than crashing. A person referenced by an expense but missing from `people`
+is still included, with `name: null`, so the ledger keeps balancing.
 
 **Worked Example**: 3 people, 2 expenses.
 
@@ -331,36 +366,47 @@ interface Transfer {
 }
 
 function calculateSettlement(balances: PersonBalance[]): Transfer[] {
-  // Creditors (net > 0) and debtors (net < 0)
+  // Work on copies of the magnitudes: the input is never mutated, so calling this
+  // twice returns the same list and a re-render cannot silently produce "no transfers".
   const creditors = balances
     .filter(b => b.netPaise > 0)
-    .sort((a, b) => b.netPaise - a.netPaise || a.personId.localeCompare(b.personId));
-  
+    .map(b => ({ personId: b.personId, amountPaise: b.netPaise }));
+
   const debtors = balances
     .filter(b => b.netPaise < 0)
-    .sort((a, b) => b.netPaise - a.netPaise || a.personId.localeCompare(b.personId)); // most negative first
-  
+    .map(b => ({ personId: b.personId, amountPaise: -b.netPaise }));
+
+  const difference = balances.reduce((sum, b) => sum + b.netPaise, 0);
+  if (difference !== 0) throw new Error('Balances must sum to zero to settle');
+
+  // Largest first on both sides. Ties break on personId, compared by code unit so the
+  // order is identical in every locale and on every device.
+  const bySize = (a: typeof creditors[number], b: typeof creditors[number]) =>
+    b.amountPaise - a.amountPaise || (a.personId < b.personId ? -1 : a.personId > b.personId ? 1 : 0);
+  creditors.sort(bySize);
+  debtors.sort(bySize);
+
   const transfers: Transfer[] = [];
   let ci = 0, di = 0;
-  
+
   while (ci < creditors.length && di < debtors.length) {
     const creditor = creditors[ci];
     const debtor = debtors[di];
-    const amount = Math.min(creditor.netPaise, -debtor.netPaise);
-    
+    const amount = Math.min(creditor.amountPaise, debtor.amountPaise);
+
     transfers.push({
       from: debtor.personId,
       to: creditor.personId,
       amountPaise: amount
     });
-    
-    creditor.netPaise -= amount;
-    debtor.netPaise += amount;
-    
-    if (creditor.netPaise === 0) ci++;
-    if (debtor.netPaise === 0) di++;
+
+    creditor.amountPaise -= amount;
+    debtor.amountPaise -= amount;
+
+    if (creditor.amountPaise === 0) ci++;
+    if (debtor.amountPaise === 0) di++;
   }
-  
+
   return transfers;
 }
 ```
@@ -514,7 +560,7 @@ interface HistoryEntry {
 | `totalBaseAmount = 0` (free expense) | Tax = 0; shares = 0 |
 | Single participant | Share = total; no settlement needed |
 | Zero tax (bps = 0) | Tax = 0; no division by zero |
-| Remainder paise distribution | Largest-remainder (first N get +1) |
+| Remainder paise distribution | Largest-remainder (lowest `personId` gets +1) |
 | Deleted participant in history | Shows "(removed)" in report |
 | Future date (no trip timezone) | Reject if date > today in device TZ |
 | Duplicate offline write | Same `clientUUID` → no-op |

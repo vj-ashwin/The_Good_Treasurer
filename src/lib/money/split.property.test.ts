@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
-import { splitEvenly } from './split'
+import { itemizedShares, splitEqual, splitEvenly } from './split'
 import { sumPaise } from './paise'
 
 const safeAmount = fc.integer({ min: 0, max: 1_000_000_000 })
@@ -73,6 +73,112 @@ describe('splitEvenly properties', () => {
       fc.property(fc.integer({ min: -1_000_000_000, max: -1 }), safeParts, (total, parts) => {
         expect(sumPaise(splitEvenly(total, parts))).toBe(total)
       }),
+    )
+  })
+})
+
+describe('splitEqual properties', () => {
+  const idsArb = fc
+    .uniqueArray(fc.integer({ min: 0, max: 8 }), { minLength: 1, maxLength: 5 })
+    .map((numbers) => numbers.map((number) => `p${number}`))
+
+  it('property: the shares always sum to the bill', () => {
+    fc.assert(
+      fc.property(safeAmount, idsArb, (total, ids) => {
+        expect(sumPaise(Object.values(splitEqual(total, ids)))).toBe(total)
+      }),
+    )
+  })
+
+  it('property: every participant gets exactly one non-negative share', () => {
+    fc.assert(
+      fc.property(safeAmount, idsArb, (total, ids) => {
+        const shares = splitEqual(total, ids)
+        expect(Object.keys(shares).sort()).toEqual([...ids].sort())
+        for (const share of Object.values(shares)) {
+          expect(Number.isSafeInteger(share)).toBe(true)
+          expect(share).toBeGreaterThanOrEqual(0)
+        }
+      }),
+    )
+  })
+
+  it('property: selection order never changes the result', () => {
+    fc.assert(
+      fc.property(safeAmount, idsArb, (total, ids) => {
+        const reversed = [...ids].reverse()
+        expect(splitEqual(total, reversed)).toEqual(splitEqual(total, ids))
+      }),
+    )
+  })
+})
+
+describe('itemizedShares properties', () => {
+  const idsArb = fc
+    .uniqueArray(fc.integer({ min: 0, max: 8 }), { minLength: 1, maxLength: 5 })
+    .map((numbers) => numbers.map((number) => `p${number}`))
+
+  function billArb(ids: readonly string[]) {
+    return fc.record({
+      amountPaise: fc.integer({ min: 1, max: 1_000_000 }),
+      consumerIds: fc.uniqueArray(fc.constantFrom(...ids), {
+        minLength: 1,
+        maxLength: ids.length,
+      }),
+    })
+  }
+
+  it('property: itemized shares sum to the stored bill total', () => {
+    // The invariant the Firestore rules cannot check: the shares conserve the bill.
+    fc.assert(
+      fc.property(
+        idsArb.chain((ids) =>
+          fc.record({
+            gstBps: fc.integer({ min: 0, max: 10_000 }),
+            scBps: fc.integer({ min: 0, max: 10_000 }),
+            lines: fc.array(billArb(ids), { minLength: 1, maxLength: 4 }),
+          }),
+        ),
+        (bill) => {
+          const result = itemizedShares(
+            bill.lines.map((line, index) => ({
+              description: `line ${String(index)}`,
+              amountPaise: line.amountPaise,
+              consumerIds: line.consumerIds,
+            })),
+            [...new Set(bill.lines.flatMap((line) => line.consumerIds))],
+            { gstBps: bill.gstBps, scBps: bill.scBps },
+          )
+          expect(sumPaise(Object.values(result.shares))).toBe(result.totalPaise)
+          expect(result.totalPaise).toBe(
+            result.basePaise + result.gstPaise + result.serviceChargePaise,
+          )
+        },
+      ),
+    )
+  })
+
+  it('property: no line item can create a negative or fractional share', () => {
+    fc.assert(
+      fc.property(
+        idsArb.chain((ids) =>
+          fc.array(billArb(ids), { minLength: 1, maxLength: 4 }),
+        ),
+        (lines) => {
+          const result = itemizedShares(
+            lines.map((line, index) => ({
+              description: `line ${String(index)}`,
+              amountPaise: line.amountPaise,
+              consumerIds: line.consumerIds,
+            })),
+            [...new Set(lines.flatMap((line) => line.consumerIds))],
+          )
+          for (const share of Object.values(result.shares)) {
+            expect(Number.isSafeInteger(share)).toBe(true)
+            expect(share).toBeGreaterThanOrEqual(0)
+          }
+        },
+      ),
     )
   })
 })

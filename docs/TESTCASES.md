@@ -22,7 +22,7 @@ All amounts in **paise** (1₹ = 100 paise). Test cases cover share computation,
 | TC-EQ-03 | Remainder: 101 paise, 3 people | total=101, n=3 | [34, 34, 33] |
 | TC-EQ-04 | Single person | total=50000, n=1 | [50000] |
 | TC-EQ-05 | Zero base (free) | total=0, n=3 | [0, 0, 0] |
-| TC-EQ-06 | Large remainder | total=1000, n=7 | [143, 143, 143, 143, 143, 142, 142] |
+| TC-EQ-06 | Large remainder | total=1000, n=7 | [143, 143, 143, 143, 143, 143, 142] |
 
 **Property**: `sum(shares) === total` always.
 
@@ -48,7 +48,7 @@ All amounts in **paise** (1₹ = 100 paise). Test cases cover share computation,
 |---------|-------------|------------|-------------------------|
 | TC-IT-01 | CUJ 4: Snacks 80000 (A,C), Drinks 60000 (B,D), Shared 100000 (A,B,C,D) | 3 items, 4 people | A:65000, B:55000, C:65000, D:55000 |
 | TC-IT-02 | Shared item with tax: Shared 100000, GST 18% (1800 bps) | 1 item, 4 consumers, gstBps=1800 | Each: 25000 base + 4500 tax = 29500 |
-| TC-IT-03 | Per-line tax: Snacks 80000 (A,C) GST 18%, Drinks 60000 (B,D) no tax | 2 items | A:40000+3600=43600, C:43600, B:30000, D:30000 |
+| TC-IT-03 | Per-line tax: Snacks 80000 (A,C) GST 18%, Drinks 60000 (B,D) no tax | 2 items | A:40000+7200=47200, C:47200, B:30000, D:30000 |
 | TC-IT-04 | Single consumer | 1 item, 1 consumer | Full amount to that person |
 | TC-IT-05 | Shared item remainder | 100 paise, 3 consumers | [34,33,33] |
 | TC-IT-06 | Tax remainder | Tax 100 paise, 3 consumers | [34,33,33] |
@@ -76,8 +76,8 @@ Total per person = 29500
 | TC-TX-02 | SC 10% on 320000 | base=320000, scBps=1000 | sc=32000 |
 | TC-TX-03 | Both GST 18% + SC 10% | base=320000, gstBps=1800, scBps=1000 | totalTax=89600 |
 | TC-TX-03b | Zero bps | base=100000, gstBps=0 | gst=0 |
-| TC-TX-04 | Rounding half-up: 100 * 18% = 18.005 | base=10000, gstBps=1800 | gst=1801 (half-up) |
-| TC-TX-05 | Rounding half-up down: 100 * 12% = 12.0049 | base=10000, gstBps=1200 | gst=1200 |
+| TC-TX-04 | Exact rate: ₹100 at 18% is exactly ₹18 | base=10000, gstBps=1800 | gst=1800 |
+| TC-TX-05 | Exact rate: ₹100 at 12% is exactly ₹12 | base=10000, gstBps=1200 | gst=1200 |
 | TC-TX-05b | Zero base | base=0, gstBps=1800 | gst=0 |
 | TC-TX-06 | Per-line tax: 100000 × 18% = 18000 | base=100000, gstBps=1800 | gst=18000 |
 | TC-TX-07 | SC rounding: 100000 × 10% = 10000 | base=100000, scBps=1000 | sc=10000 |
@@ -92,7 +92,7 @@ Total per person = 29500
 
 | Test ID | Scenario | Expected Balances (paise) |
 |---------|----------|---------------------------|
-| TC-BL-01 | CUJ balances: Alice paid 409600, share 152400; Bob paid 150000, share 162400; Carol paid 0, share 142400 | A: paid=409600, share=152400, net=+257200; B: paid=150000, share=162400, net=-12400; C: paid=0, share=142400, net=-142400 |
+| TC-BL-01 | CUJ balances: Alice paid 409600, share 152400; Bob paid 150000, share 162400; Carol paid 0, share 142400; Dave paid 0, share 102400 | A: paid=409600, share=152400, net=+257200; B: paid=150000, share=162400, net=-12400; C: paid=0, share=142400, net=-142400; D: paid=0, share=102400, net=-102400 |
 | TC-BL-02 | Sum zero | sum(nets) === 0 |
 | TC-BL-03 | Single person | paid=share, net=0 |
 | TC-BL-04 | Deleted person excluded | Deleted person not in balances |
@@ -106,13 +106,13 @@ Total per person = 29500
 
 | Test ID | Balances (paise) | Expected Transfers (from→to: amount) |
 |---------|------------------|--------------------------------------|
-| TC-ST-01 | A:+257200, B:-12400, C:-142400 | C→A:142400, B→A:12400 |
+| TC-ST-01 | A:+257200, B:-12400, C:-142400, D:-102400 | C→A:142400, D→A:102400, B→A:12400 |
 | TC-ST-02 | A:+100, B:-50, C:-50 | B→A:50, C→A:50 |
 | TC-ST-02b | A:+100, B:-100 | B→A:100 |
 | TC-ST-03 | A:+100, B:+100, C:-100, D:-100 | C→A:100, D→B:100 (tie-break by personId) |
-| TC-ST-04 | A:+100, B:+100, C:-150, D:-50 | C→A:100, C→B:50 |
+| TC-ST-04 | A:+100, B:+100, C:-150, D:-50 | C→A:100, C→B:50, D→B:50 |
 | TC-ST-05 | A:+80, B:+70, C:+50, D:-100, E:-100 | D→A:80, D→B:20, E→B:50, E→C:50 |
-| TC-ST-05b | Same as above but tie-break | Person IDs: A=aaa, B=bbb, C=ccc, D=ddd, E=eee → D→A:80, D→B:20, E→A:50, E→B:50? No, greedy: D→A:80 (A 0), D→B:20 (B 50), E→B:50 (B 0), E→C:50. |
+| TC-ST-05b | Same balances, tie-break by id (A=aaa … E=eee) | D→A:80, D→B:20, E→B:50, E→C:50 |
 
 **Property**: `sum(transfers.amount) === sum(positive nets) === sum(-negative nets)`
 
