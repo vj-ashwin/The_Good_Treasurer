@@ -1,12 +1,3 @@
-const currencyFormatter = new Intl.NumberFormat(undefined, {
-  style: 'currency',
-  currency: 'USD',
-})
-
-export function formatCurrency(amount: number): string {
-  return currencyFormatter.format(Number.isFinite(amount) ? amount : 0)
-}
-
 /** Formats an ISO `YYYY-MM-DD` date for display, falling back to the raw value. */
 export function formatDate(isoDate: string): string {
   if (!isoDate) return 'No date'

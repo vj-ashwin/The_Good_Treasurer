@@ -1,0 +1,61 @@
+name: CI
+
+# Every branch and every pull request. There is no `paths-ignore`: a docs-only
+# change is cheap to verify, and a required check that sometimes does not run
+# can leave a pull request permanently "pending".
+on:
+  push:
+  pull_request:
+
+# A newer push to the same branch/PR cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# This workflow reads the repository and nothing else. It uses no secret, no
+# service account and no Firebase project: the rules tests run against the
+# local emulator under a throwaway `demo-*` project id. Deploys are not done
+# here — Netlify builds from its own Git integration.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # Same version Netlify and local development use.
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # firebase-tools (v15) requires JDK 21+ to run the Firestore emulator, and
+      # the runner image ships an older default JDK.
+      - name: Set up Java for the Firestore emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit and property tests
+        run: npm test
+
+      # `test:rules` starts the emulator itself via `firebase emulators:exec`, so
+      # this needs no credentials and no Firebase project.
+      - name: Security-rules tests
+        run: npm run test:rules
+
+      - name: Build
+        run: npm run build

@@ -1,0 +1,324 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The Good Treasurer — Firestore security rules.
+//
+// These are PRODUCTION rules. There is no test-mode branch, no `if true`, and
+// no wildcard write anywhere in this file. This file *is* what
+// `firebase deploy --only firestore:rules` ships, and the emulator suite
+// (tests/firestore.rules.test.ts) loads this exact file — so a rule cannot pass
+// tests and then behave differently in production.
+//
+// Data lives entirely inside the signed-in user's own subtree:
+//
+//   /users/{uid}/trips/{tripId}
+//   /users/{uid}/trips/{tripId}/people/{personId}
+//   /users/{uid}/trips/{tripId}/expenses/{expenseId}
+//   /users/{uid}/trips/{tripId}/history/{historyId}
+//
+// Three things the rules language cannot express, enforced in app code and
+// covered by tests instead (see docs/FIRESTORE.md § "What the rules
+// deliberately do not enforce"):
+//   1. `shares` summing to the bill. Rules have no loops and no aggregate
+//      functions, so a map's values cannot be summed.
+//   2. "Does any expense still reference this person?" Rules cannot query.
+//   3. That a participant id exists in the trip's people subcollection.
+//      Checking it would cost one document read per participant, and document
+//      reads in rules are capped at 10 per write.
+//
+// A fourth gap is emulator-specific: `getAfter()` does not work in the local
+// Firestore emulator, so no rule here reads post-batch content. History entries
+// are checked against the expense's *pre-write* state instead, which means an
+// extra entry for an existing expense cannot be rejected. See that same
+// section.
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── shared helpers ───────────────────────────────────────────────────────
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // The one access-control decision in this app: the signed-in user's uid must
+    // equal the {uid} segment of the path being touched.
+    function owner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isIntBetween(value, low, high) {
+      return value is int && value >= low && value <= high;
+    }
+
+    // Money is integer paise. The upper bound is a corruption guard (₹100
+    // crore), not a product limit.
+    function isPaise(value) {
+      return isIntBetween(value, 0, 100000000000);
+    }
+
+    // Ids are client-generated UUIDs, never Firestore auto-ids. A stable,
+    // opaque id is what makes settlement tie-breaking deterministic. It also
+    // makes retrying a write idempotent: the same logical write reuses the same
+    // document id, so a retry can never create a second document.
+    function isUuid(value) {
+      return value is string
+        && value.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+    }
+
+    // Dates are calendar days stored as 'YYYY-MM-DD', never timestamps. A
+    // timestamp would make "which day was this expense?" depend on the reader's
+    // timezone, which is exactly the class of bug this avoids.
+    function isCalendarDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    // A list of ids: bounded in size and free of duplicates.
+    function isIdList(value, low, high) {
+      return value is list
+        && value.size() >= low
+        && value.size() <= high
+        && value.toSet().size() == value.size();
+    }
+
+    function isNullOrTimestamp(value) {
+      return value == null || value is timestamp;
+    }
+
+    // Exactly these keys, no more and no fewer. The client always writes the
+    // full document with `null` for absent optionals, so a missing key is a bug
+    // rather than an absence.
+    function hasExactKeys(data, keys) {
+      return data.keys().hasAll(keys) && data.keys().hasOnly(keys);
+    }
+
+    function expensePath(uid, tripId, expenseId) {
+      return /databases/$(database)/documents/users/$(uid)/trips/$(tripId)/expenses/$(expenseId);
+    }
+
+    function historyPath(uid, tripId, historyId) {
+      return /databases/$(database)/documents/users/$(uid)/trips/$(tripId)/history/$(historyId);
+    }
+
+    // ── trips ────────────────────────────────────────────────────────────────
+    match /users/{uid}/trips/{tripId} {
+
+      function validTrip(d) {
+        return hasExactKeys(d, ['name', 'createdAt', 'updatedAt'])
+          && d.name is string && d.name.size() > 0 && d.name.size() <= 100
+          && d.createdAt is timestamp
+          && d.updatedAt is timestamp;
+      }
+
+      allow get, list: if owner(uid);
+
+      allow create: if owner(uid)
+        && isUuid(tripId)
+        && validTrip(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if owner(uid)
+        && validTrip(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      // Trips are permanent (PRD G8). The app has no delete path, and neither
+      // do the rules.
+      allow delete: if false;
+
+      // ── people ─────────────────────────────────────────────────────────────
+      match /people/{personId} {
+
+        function validPerson(d) {
+          return hasExactKeys(d, ['name', 'isOrganizer', 'createdAt', 'updatedAt'])
+            && d.name is string && d.name.size() > 0 && d.name.size() <= 50
+            && d.isOrganizer is bool
+            && d.createdAt is timestamp
+            && d.updatedAt is timestamp;
+        }
+
+        allow get, list: if owner(uid);
+
+        allow create: if owner(uid)
+          && isUuid(personId)
+          && validPerson(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+
+        allow update: if owner(uid)
+          && validPerson(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          // Who the organiser is cannot be reassigned by editing a document.
+          && request.resource.data.isOrganizer == resource.data.isOrganizer
+          && request.resource.data.updatedAt == request.time;
+
+        // A person is only removed when no expense references them; that check
+        // is a query, which rules cannot run, so the People UI performs it
+        // first. A mistake here leaves a dangling id, which the report renders
+        // as "Removed person" rather than corrupting any amount.
+        allow delete: if owner(uid);
+      }
+
+      // ── expenses ───────────────────────────────────────────────────────────
+      match /expenses/{expenseId} {
+
+        function expenseKeys() {
+          return [
+            'title', 'date', 'category', 'payerId', 'participants',
+            'baseAmountPaise', 'gstAmountPaise', 'serviceChargeAmountPaise', 'totalPaise',
+            'gstBps', 'serviceChargeBps', 'lineItems', 'shares',
+            'createdAt', 'updatedAt', 'deletedAt', 'lastHistoryId'
+          ];
+        }
+
+        function validExpense(d) {
+          return hasExactKeys(d, expenseKeys())
+            && d.title is string && d.title.size() > 0 && d.title.size() <= 200
+            && d.category is string && d.category.size() > 0 && d.category.size() <= 50
+            && isCalendarDate(d.date)
+            && d.payerId is string
+            && isIdList(d.participants, 1, 50)
+            // Whoever paid must be one of the people the bill is split across.
+            && d.payerId in d.participants
+            && isPaise(d.baseAmountPaise) && d.baseAmountPaise > 0
+            && isPaise(d.gstAmountPaise)
+            && isPaise(d.serviceChargeAmountPaise)
+            // Integer arithmetic only: the stored total is exactly the sum of
+            // its parts, with no rounding step and no float.
+            && d.totalPaise == d.baseAmountPaise + d.gstAmountPaise + d.serviceChargeAmountPaise
+            // Optional bookkeeping for re-opening the entry form.
+            && (d.gstBps == null || isIntBetween(d.gstBps, 0, 10000))
+            && (d.serviceChargeBps == null || isIntBetween(d.serviceChargeBps, 0, 10000))
+            && (d.lineItems == null || (d.lineItems is list && d.lineItems.size() <= 200))
+            // Every participant has exactly one share entry, and nobody who is
+            // not a participant has one. (The values themselves are integer
+            // paise; see the header note on why their sum is not checked here.)
+            && d.shares is map
+            && d.shares.size() == d.participants.size()
+            && d.shares.keys().hasAll(d.participants)
+            && d.shares.keys().hasOnly(d.participants)
+            && d.createdAt is timestamp
+            && d.updatedAt is timestamp
+            && isNullOrTimestamp(d.deletedAt)
+            && isUuid(d.lastHistoryId);
+        }
+
+        allow get, list: if owner(uid);
+
+        allow create: if owner(uid)
+          && isUuid(expenseId)
+          && validExpense(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.deletedAt == null
+          // Atomicity: the history entry this expense points at must exist once
+          // the batch completes. For a new expense that can only be true if the
+          // entry is created by this same batch.
+          && existsAfter(historyPath(uid, tripId, request.resource.data.lastHistoryId));
+
+        allow update: if owner(uid)
+          && validExpense(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time
+          // A soft-deleted expense is frozen. Anything about it — including
+          // deleting it twice — must first restore it (deletedAt back to null).
+          && (request.resource.data.deletedAt == null
+              || request.resource.data.deletedAt == request.time)
+          // The entry that describes this edit must exist after the batch.
+          // The history rule below is what rejects an entry whose action does
+          // not match the state this expense was in before the write.
+          && existsAfter(historyPath(uid, tripId, request.resource.data.lastHistoryId));
+
+        // Expenses are soft-deleted only. History and stored shares must stay
+        // reconstructable, so no hard delete is ever allowed.
+        allow delete: if false;
+      }
+
+      // ── history (append-only change log) ─────────────────────────────────
+      match /history/{historyId} {
+
+        function historyKeys() {
+          return ['expenseId', 'action', 'authorId', 'timestamp', 'changedFields', 'before', 'after'];
+        }
+
+        function validHistoryEntry(d) {
+          return hasExactKeys(d, historyKeys())
+            && isUuid(d.expenseId)
+            && d.action in ['create', 'update', 'delete', 'restore']
+            // Attributable to the signed-in user, and stamped by the server.
+            && d.authorId == request.auth.uid
+            && d.timestamp == request.time
+            && d.changedFields is list
+            && d.changedFields.size() <= 50
+            && d.changedFields.toSet().size() == d.changedFields.size()
+            && (d.before == null || d.before is map)
+            && (d.after == null || d.after is map);
+        }
+
+        // A history entry must describe a real transition. The state *before*
+        // the write comes from exists()/get(); the action must be the one that
+        // fits it: create only for a brand-new expense, update/delete only for
+        // a live one, restore only for a soft-deleted one. The expense it names
+        // must also exist after the batch.
+        //
+        // Note: getAfter() is the only way to read a document's post-batch
+        // content, and it does not work in the Firestore emulator, so the
+        // action is checked against the pre-write state rather than the result.
+        // See docs/FIRESTORE.md § "What the rules deliberately do not enforce".
+        function describesSameWrite(uid, tripId, entry) {
+          let path = expensePath(uid, tripId, entry.expenseId);
+          let existed = exists(path);
+          // `get()` returns a document, so its fields live under `.data`.
+          let wasDeleted = existed && get(path).data.deletedAt != null;
+
+          let changedFieldsMatch = entry.before != null
+            && entry.after != null
+            && entry.changedFields.size() > 0
+            && entry.before.keys().hasAll(entry.changedFields)
+            && entry.before.keys().hasOnly(entry.changedFields)
+            && entry.after.keys().hasAll(entry.changedFields)
+            && entry.after.keys().hasOnly(entry.changedFields);
+
+          let actionMatchesState =
+            (entry.action == 'create'
+              && !existed
+              && entry.changedFields.size() == 0
+              && entry.before == null
+              && entry.after != null)
+            // Everything else must describe a change to an expense that is
+            // already there: an update or delete of a live one, a restore of a
+            // soft-deleted one. `existed` is what stops a "create" batch from
+            // carrying an extra update/delete entry.
+            || (existed
+              && changedFieldsMatch
+              && ((entry.action == 'delete' && !wasDeleted)
+                || (entry.action == 'restore' && wasDeleted)
+                || (entry.action == 'update' && !wasDeleted)));
+
+          // The expense write itself must land in this same batch.
+          return actionMatchesState && existsAfter(path);
+        }
+
+        allow get, list: if owner(uid);
+
+        allow create: if owner(uid)
+          && isUuid(historyId)
+          && validHistoryEntry(request.resource.data)
+          && describesSameWrite(uid, tripId, request.resource.data);
+
+        // Append-only: the audit trail can never be rewritten or erased.
+        allow update, delete: if false;
+      }
+    }
+
+    // Everything not explicitly allowed above is denied. Firestore denies by
+    // default; this block states that intent so a future edit cannot quietly
+    // open a path. It cannot weaken anything above it, because a denial is the
+    // absence of an allow.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

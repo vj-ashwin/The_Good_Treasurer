@@ -1,5 +1,10 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app'
-import { getAuth, type Auth } from 'firebase/auth'
+import {
+  browserLocalPersistence,
+  getAuth,
+  setPersistence,
+  type Auth,
+} from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -23,3 +28,14 @@ const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebas
 
 export const auth: Auth = getAuth(app)
 export const db: Firestore = getFirestore(app)
+
+/**
+ * Keeps the user signed in across tabs and reloads by storing the session in
+ * localStorage. Runs once at module load; a rejected promise only means the
+ * current environment does not support the chosen persistence, in which case
+ * Firebase falls back to in-memory and the user simply signs in again next load.
+ */
+void setPersistence(auth, browserLocalPersistence).catch(() => {
+  // Persistence unsupported in this environment — sign-in still works, it just
+  // will not survive a reload. Nothing actionable for the user here.
+})

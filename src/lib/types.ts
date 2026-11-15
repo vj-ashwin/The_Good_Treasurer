@@ -2,7 +2,8 @@
 export interface Expense {
   id: string
   description: string
-  amount: number
+  /** Amount in integer paise. Never a decimal amount. */
+  amountPaise: number
   category: ExpenseCategory
   date: string
   createdAt: number
