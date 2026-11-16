@@ -18,6 +18,31 @@ npm install
 npm run dev
 ```
 
+## Run it like an app (Windows)
+
+Double-click **`start-app.bat`** in the project root. It starts the Vite dev server, waits
+until the app is actually answering, and then opens <http://localhost:5173/> in your
+default browser — the same feel as clicking a desktop app icon.
+
+The dev server keeps running in its own window titled *The Good Treasurer — dev server*.
+Close that window (or press `Ctrl+C` inside it) to stop the app.
+
+The launcher needs [Node.js](https://nodejs.org/) 20 or newer on your `PATH`. On the first
+run it installs dependencies with `npm ci` (only if `node_modules` is missing). If port
+`5173` is already taken by another program, the launcher says so instead of opening the
+wrong page, and running it again while the app is already up just re-opens the browser.
+
+### Desktop shortcut
+
+Create a desktop shortcut named **The Good Treasurer** with:
+
+```bat
+start-app.bat shortcut
+```
+
+The shortcut points at `start-app.bat`, so it always launches the current checkout of the
+project. Run the command again to refresh it after moving or renaming the folder.
+
 ## Environment variables
 
 Create a `.env.local` file in the project root (it is git-ignored). The app reads its Firebase
