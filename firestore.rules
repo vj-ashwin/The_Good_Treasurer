@@ -168,7 +168,7 @@ service cloud.firestore {
           return [
             'title', 'date', 'category', 'payerId', 'participants',
             'baseAmountPaise', 'gstAmountPaise', 'serviceChargeAmountPaise', 'totalPaise',
-            'gstBps', 'serviceChargeBps', 'lineItems', 'shares',
+            'gstBps', 'serviceChargeBps', 'gstParts', 'lineItems', 'shares',
             'createdAt', 'updatedAt', 'deletedAt', 'lastHistoryId'
           ];
         }
@@ -191,6 +191,17 @@ service cloud.firestore {
             // Optional bookkeeping for re-opening the entry form.
             && (d.gstBps == null || isIntBetween(d.gstBps, 0, 10000))
             && (d.serviceChargeBps == null || isIntBetween(d.serviceChargeBps, 0, 10000))
+            // A fixed GST amount may be split the way a tax invoice shows it.
+            // The three parts carry integer paise and must add up to the GST.
+            && (d.gstParts == null || (
+                 d.gstParts is map
+                 && d.gstParts.keys().hasAll(['cgstPaise', 'sgstPaise', 'igstPaise'])
+                 && d.gstParts.keys().hasOnly(['cgstPaise', 'sgstPaise', 'igstPaise'])
+                 && isPaise(d.gstParts.cgstPaise)
+                 && isPaise(d.gstParts.sgstPaise)
+                 && isPaise(d.gstParts.igstPaise)
+                 && d.gstParts.cgstPaise + d.gstParts.sgstPaise + d.gstParts.igstPaise
+                    == d.gstAmountPaise))
             && (d.lineItems == null || (d.lineItems is list && d.lineItems.size() <= 200))
             // Every participant has exactly one share entry, and nobody who is
             // not a participant has one. (The values themselves are integer

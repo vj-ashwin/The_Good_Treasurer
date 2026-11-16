@@ -88,7 +88,14 @@ export default function CreateTripDialog({ uid, onClose }: { uid: string; onClos
   return (
     <dialog
       ref={dialogRef}
-      onClose={onClose}
+      // `close` is deliberately not handled: the effect's cleanup calls
+      // `dialog.close()`, and under StrictMode that cleanup runs right after the
+      // mount effect, so an onClose here would unmount the dialog immediately.
+      // Escape arrives as `cancel` instead, which still reaches the parent.
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}

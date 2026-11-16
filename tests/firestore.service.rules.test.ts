@@ -27,13 +27,19 @@ import {
 } from 'firebase/firestore'
 import {
   addPerson,
+  createExpense,
   createTrip,
   createTripWithPeople,
+  ExpenseConflictError,
   getTrip,
   isUuid,
+  restoreExpense,
+  softDeleteExpense,
+  updateExpense,
   ValidationError,
   watchPeople,
   watchTrips,
+  type NewExpense,
   type Person,
   type Trip,
 } from '../src/lib/firestore'
@@ -273,5 +279,248 @@ describe('watchPeople', () => {
     )
     expect(people.map((person) => person.name)).toEqual(['Alice', 'Bob'])
     expect(people[0].isOrganizer).toBe(true)
+  })
+})
+
+function equalExpenseInput(aliceId: string, bobId: string): NewExpense {
+  return {
+    title: 'Dinner',
+    date: '2026-11-16',
+    category: 'Food',
+    payerId: aliceId,
+    participants: [aliceId, bobId],
+    mode: 'equal',
+    baseAmountPaise: 120_000,
+  }
+}
+
+async function seedExpense(
+  db: Firestore,
+): Promise<{ tripId: string; expenseId: string; input: NewExpense }> {
+  const { id: tripId } = await createTrip(db, OWNER, 'Goa 2026')
+  const alice = await addPerson(db, OWNER, tripId, { name: 'Alice', isOrganizer: true })
+  const bob = await addPerson(db, OWNER, tripId, { name: 'Bob' })
+  const input = equalExpenseInput(alice.id, bob.id)
+  const created = await createExpense(db, OWNER, tripId, input)
+  return { tripId, expenseId: created.id, input }
+}
+
+/** The current server `updatedAt` of an expense, in epoch milliseconds. */
+async function updatedAtOf(
+  db: Firestore,
+  tripId: string,
+  expenseId: string,
+): Promise<number> {
+  const snapshot = await getDoc(
+    doc(db, 'users', OWNER, 'trips', tripId, 'expenses', expenseId),
+  )
+  const value: unknown = snapshot.data()?.updatedAt
+  if (value && typeof (value as { toMillis?: unknown }).toMillis === 'function') {
+    return (value as { toMillis(): number }).toMillis()
+  }
+  return 0
+}
+
+function historyOf(db: Firestore, tripId: string) {
+  return getDocs(collection(db, 'users', OWNER, 'trips', tripId, 'history'))
+}
+
+describe('expense lifecycle', () => {
+  test('createExpense writes the expense and its create entry in one batch', async () => {
+    const db = asOwner()
+    const { tripId, expenseId } = await seedExpense(db)
+
+    const stored = await getDoc(doc(db, 'users', OWNER, 'trips', tripId, 'expenses', expenseId))
+    expect(stored.data()).toMatchObject({ title: 'Dinner', totalPaise: 120_000, deletedAt: null })
+
+    const history = await historyOf(db, tripId)
+    expect(history.size).toBe(1)
+    expect(history.docs[0].data()).toMatchObject({ expenseId, action: 'create' })
+  })
+
+  test('softDeleteExpense stamps deletedAt and appends a delete entry', async () => {
+    const db = asOwner()
+    const { tripId, expenseId } = await seedExpense(db)
+
+    await softDeleteExpense(db, OWNER, tripId, expenseId)
+
+    const stored = await getDoc(doc(db, 'users', OWNER, 'trips', tripId, 'expenses', expenseId))
+    expect(stored.data()?.deletedAt).toBeTruthy()
+
+    const history = await historyOf(db, tripId)
+    expect(history.size).toBe(2)
+    const deletion = history.docs.map((entry) => entry.data()).find((entry) => entry.action === 'delete')
+    expect(deletion).toMatchObject({
+      expenseId,
+      changedFields: ['deletedAt'],
+      before: { deletedAt: null },
+    })
+    const linked = history.docs.find((entry) => entry.id === stored.data()?.lastHistoryId)
+    expect(linked?.data()).toMatchObject({ expenseId, action: 'delete' })
+  })
+
+  test('restoreExpense clears deletedAt and appends a restore entry', async () => {
+    const db = asOwner()
+    const { tripId, expenseId } = await seedExpense(db)
+    await softDeleteExpense(db, OWNER, tripId, expenseId)
+
+    await restoreExpense(db, OWNER, tripId, expenseId)
+
+    const stored = await getDoc(doc(db, 'users', OWNER, 'trips', tripId, 'expenses', expenseId))
+    expect(stored.data()?.deletedAt).toBeNull()
+
+    const history = await historyOf(db, tripId)
+    expect(history.docs.map((entry) => entry.data().action).sort()).toEqual([
+      'create',
+      'delete',
+      'restore',
+    ])
+  })
+
+  test('refuses to delete twice and to restore a live expense', async () => {
+    const db = asOwner()
+    const { tripId, expenseId } = await seedExpense(db)
+
+    await expect(restoreExpense(db, OWNER, tripId, expenseId)).rejects.toBeInstanceOf(
+      ValidationError,
+    )
+
+    await softDeleteExpense(db, OWNER, tripId, expenseId)
+    await expect(softDeleteExpense(db, OWNER, tripId, expenseId)).rejects.toBeInstanceOf(
+      ValidationError,
+    )
+  })
+})
+
+describe('expense tax entry', () => {
+  test('stores a fixed GST split of CGST/SGST/IGST', async () => {
+    const db = asOwner()
+    const { id: tripId } = await createTrip(db, OWNER, 'Goa 2026')
+    const alice = await addPerson(db, OWNER, tripId, { name: 'Alice', isOrganizer: true })
+    const bob = await addPerson(db, OWNER, tripId, { name: 'Bob' })
+
+    const created = await createExpense(db, OWNER, tripId, {
+      ...equalExpenseInput(alice.id, bob.id),
+      gstAmountPaise: 18_000,
+      gstParts: { cgstPaise: 9_000, sgstPaise: 9_000, igstPaise: 0 },
+    })
+
+    const stored = await getDoc(
+      doc(db, 'users', OWNER, 'trips', tripId, 'expenses', created.id),
+    )
+    expect(stored.data()).toMatchObject({
+      baseAmountPaise: 120_000,
+      gstAmountPaise: 18_000,
+      gstBps: null,
+      gstParts: { cgstPaise: 9_000, sgstPaise: 9_000, igstPaise: 0 },
+      totalPaise: 138_000,
+      shares: { [alice.id]: 69_000, [bob.id]: 69_000 },
+    })
+  })
+
+  test('rejects a bill dated in the future', async () => {
+    const db = asOwner()
+    const { id: tripId } = await createTrip(db, OWNER, 'Goa 2026')
+    const alice = await addPerson(db, OWNER, tripId, { name: 'Alice', isOrganizer: true })
+    const bob = await addPerson(db, OWNER, tripId, { name: 'Bob' })
+
+    await expect(
+      createExpense(db, OWNER, tripId, {
+        ...equalExpenseInput(alice.id, bob.id),
+        date: '2999-01-01',
+      }),
+    ).rejects.toBeInstanceOf(ValidationError)
+  })
+})
+
+describe('updateExpense', () => {
+  test('rewrites the fields and appends an update entry with before/after', async () => {
+    const db = asOwner()
+    const { tripId, expenseId, input } = await seedExpense(db)
+
+    await updateExpense(db, OWNER, tripId, expenseId, { ...input, title: 'Dinner (extra)' })
+
+    const stored = await getDoc(
+      doc(db, 'users', OWNER, 'trips', tripId, 'expenses', expenseId),
+    )
+    expect(stored.data()).toMatchObject({ title: 'Dinner (extra)', totalPaise: 120_000 })
+
+    const history = await historyOf(db, tripId)
+    const update = history.docs.map((entry) => entry.data()).find((entry) => entry.action === 'update')
+    expect(update).toMatchObject({
+      expenseId,
+      changedFields: ['title'],
+      before: { title: 'Dinner' },
+      after: { title: 'Dinner (extra)' },
+    })
+    const linked = history.docs.find((entry) => entry.id === stored.data()?.lastHistoryId)
+    expect(linked?.data()).toMatchObject({ action: 'update' })
+  })
+
+  test('rejects a write based on a stale version with ExpenseConflictError', async () => {
+    const db = asOwner()
+    const { tripId, expenseId, input } = await seedExpense(db)
+    const baseline = await updatedAtOf(db, tripId, expenseId)
+
+    // Distinct server timestamps have millisecond resolution.
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await updateExpense(db, OWNER, tripId, expenseId, { ...input, title: 'First edit' }, {
+      expectedUpdatedAt: baseline,
+    })
+
+    await expect(
+      updateExpense(db, OWNER, tripId, expenseId, { ...input, title: 'Second edit' }, {
+        expectedUpdatedAt: baseline,
+      }),
+    ).rejects.toBeInstanceOf(ExpenseConflictError)
+  })
+
+  test('force keeps mine and overwrites the conflicting cloud copy', async () => {
+    const db = asOwner()
+    const { tripId, expenseId, input } = await seedExpense(db)
+    const baseline = await updatedAtOf(db, tripId, expenseId)
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await updateExpense(db, OWNER, tripId, expenseId, { ...input, title: 'Their edit' }, {
+      expectedUpdatedAt: baseline,
+    })
+    await updateExpense(db, OWNER, tripId, expenseId, { ...input, title: 'My edit' }, {
+      expectedUpdatedAt: baseline,
+      force: true,
+    })
+
+    const stored = await getDoc(
+      doc(db, 'users', OWNER, 'trips', tripId, 'expenses', expenseId),
+    )
+    expect(stored.data()?.title).toBe('My edit')
+  })
+
+  test('rejects a no-op edit instead of writing an empty history entry', async () => {
+    const db = asOwner()
+    const { tripId, expenseId, input } = await seedExpense(db)
+
+    await expect(updateExpense(db, OWNER, tripId, expenseId, input)).rejects.toBeInstanceOf(
+      ValidationError,
+    )
+    expect((await historyOf(db, tripId)).size).toBe(1)
+  })
+
+  test('refuses to edit a soft-deleted expense', async () => {
+    const db = asOwner()
+    const { tripId, expenseId, input } = await seedExpense(db)
+    await softDeleteExpense(db, OWNER, tripId, expenseId)
+
+    await expect(
+      updateExpense(db, OWNER, tripId, expenseId, { ...input, title: 'Renamed' }),
+    ).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  test('refuses to update an expense that no longer exists', async () => {
+    const db = asOwner()
+    const { tripId, input } = await seedExpense(db)
+
+    await expect(
+      updateExpense(db, OWNER, tripId, crypto.randomUUID(), { ...input, title: 'Renamed' }),
+    ).rejects.toBeInstanceOf(ValidationError)
   })
 })

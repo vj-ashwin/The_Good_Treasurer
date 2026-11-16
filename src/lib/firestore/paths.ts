@@ -37,3 +37,18 @@ export function tripPath(uid: string, tripId: string): string {
 export function peoplePath(uid: string, tripId: string): string {
   return `${tripPath(uid, tripId)}/people`
 }
+
+export function expensesPath(uid: string, tripId: string): string {
+  return `${tripPath(uid, tripId)}/expenses`
+}
+
+/**
+ * The per-trip changelog.
+ *
+ * History lives beside `expenses`, not inside them, so one query reads a
+ * trip's whole audit trail and an entry survives independent of any one
+ * expense document (see docs/FIRESTORE.md §1).
+ */
+export function historyPath(uid: string, tripId: string): string {
+  return `${tripPath(uid, tripId)}/history`
+}

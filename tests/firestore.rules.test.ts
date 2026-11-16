@@ -91,6 +91,7 @@ const validExpense = (overrides: Record<string, unknown> = {}) => ({
   totalPaise: 409600,
   gstBps: 1800,
   serviceChargeBps: 1000,
+  gstParts: null,
   lineItems: null,
   shares: { [PERSON_A]: 204800, [PERSON_B]: 204800 },
   createdAt: serverTimestamp(),
@@ -493,6 +494,12 @@ describe('expenses — field validation', () => {
     return expectRejected(expense)
   })
 
+  test('rejects a missing gstParts key (optionals are written as null)', () => {
+    const expense: Record<string, unknown> = validExpense({ lastHistoryId: HISTORY })
+    delete expense.gstParts
+    return expectRejected(expense)
+  })
+
   async function expectRejected(expense: Record<string, unknown>) {
     await seedTripWithPeople()
     const db = asOwner()
@@ -504,6 +511,62 @@ describe('expenses — field validation', () => {
     const db = asOwner()
     await assertFails(createExpenseBatch(db, { expenseId: 'expense-1' }))
   })
+})
+
+describe('expenses — GST parts', () => {
+  const parts = { cgstPaise: 28800, sgstPaise: 28800, igstPaise: 0 }
+
+  const rejectParts = (gstParts: unknown) => async () => {
+    await seedTripWithPeople()
+    const db = asOwner()
+    await assertFails(
+      createExpenseBatch(db, {
+        expense: validExpense({ lastHistoryId: HISTORY, gstBps: null, gstParts }),
+      }),
+    )
+  }
+
+  test('accepts a CGST/SGST split that adds up to the fixed GST', async () => {
+    await seedTripWithPeople()
+    const db = asOwner()
+    await assertSucceeds(
+      createExpenseBatch(db, {
+        expense: validExpense({ lastHistoryId: HISTORY, gstBps: null, gstParts: parts }),
+      }),
+    )
+  })
+
+  test('accepts an inter-state IGST-only bill', async () => {
+    await seedTripWithPeople()
+    const db = asOwner()
+    await assertSucceeds(
+      createExpenseBatch(db, {
+        expense: validExpense({
+          lastHistoryId: HISTORY,
+          gstBps: null,
+          gstParts: { cgstPaise: 0, sgstPaise: 0, igstPaise: 57600 },
+        }),
+      }),
+    )
+  })
+
+  test('rejects parts that do not add up to the GST amount', rejectParts({
+    cgstPaise: 100,
+    sgstPaise: 100,
+    igstPaise: 0,
+  }))
+  test('rejects a part that is not integer paise', rejectParts({
+    cgstPaise: 28800.5,
+    sgstPaise: 28799.5,
+    igstPaise: 0,
+  }))
+  test('rejects a negative part', rejectParts({
+    cgstPaise: 57600,
+    sgstPaise: -1,
+    igstPaise: 1,
+  }))
+  test('rejects an unknown part', rejectParts({ ...parts, vatPaise: 0 }))
+  test('rejects a missing part', rejectParts({ cgstPaise: 28800, sgstPaise: 28800 }))
 })
 
 describe('expenses — lifecycle', () => {

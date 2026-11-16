@@ -3,6 +3,7 @@ import { usePeople } from '../hooks/usePeople'
 import { db } from '../lib/firebase'
 import {
   addPerson,
+  deletePerson,
   describeError,
   requireName,
   PERSON_NAME_MAX,
@@ -23,15 +24,29 @@ function initials(name: string): string {
 /**
  * People section for one trip (PRD screen 9, CUJ 1).
  *
- * Adding is the only operation here for now: removal must first prove no
- * expense references the person (OQ8), and that query belongs with the expense
- * layer.
+ * Removal is guarded: `deletePerson` refuses while any expense still names the
+ * person, live or soft-deleted (PRD OQ8), so a stored share can never become
+ * unresolvable. The refusal message is shown inline.
  */
 export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: string }) {
   const { people, loading, error } = usePeople(uid, tripId)
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [removeError, setRemoveError] = useState<string | null>(null)
+
+  async function handleRemove(personId: string) {
+    setPendingId(personId)
+    setRemoveError(null)
+    try {
+      await deletePerson(db, uid, tripId, personId)
+    } catch (removeFailure) {
+      setRemoveError(describeError(removeFailure))
+    } finally {
+      setPendingId(null)
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -105,6 +120,7 @@ export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: stri
       </section>
 
       {error ? <ErrorNotice message={error} /> : null}
+      {removeError ? <ErrorNotice message={removeError} /> : null}
 
       {loading && people.length === 0 ? (
         <div className="space-y-2" aria-hidden="true">
@@ -138,6 +154,14 @@ export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: stri
                   Organiser
                 </span>
               ) : null}
+              <button
+                type="button"
+                onClick={() => void handleRemove(person.id)}
+                disabled={pendingId === person.id}
+                className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {pendingId === person.id ? 'Removing…' : 'Remove'}
+              </button>
             </li>
           ))}
         </ul>

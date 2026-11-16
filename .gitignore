@@ -11,6 +11,11 @@ dist
 dist-ssr
 *.local
 
+# Environment files. The Firebase web config is not a secret, but these files
+# are off-limits as files: no `git add .` may ever pick one up.
+.env
+.env.*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

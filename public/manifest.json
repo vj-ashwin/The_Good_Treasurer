@@ -1,0 +1,18 @@
+{
+  "name": "The Good Treasurer",
+  "short_name": "Good Treasurer",
+  "description": "A clean, private trip-expense splitter for a single organiser.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#1f42e8",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

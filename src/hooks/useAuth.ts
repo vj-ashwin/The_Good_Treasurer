@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   browserPopupRedirectResolver,
   GoogleAuthProvider,
@@ -47,6 +47,14 @@ export function useAuth() {
     busy: false,
     error: null,
   })
+  const busyTimer = useRef<number | null>(null)
+
+  const clearBusyTimer = () => {
+    if (busyTimer.current !== null) {
+      window.clearTimeout(busyTimer.current)
+      busyTimer.current = null
+    }
+  }
 
   useEffect(() => {
     // Firebase can stay uninitialised when a previous popup redirect cannot
@@ -65,12 +73,31 @@ export function useAuth() {
 
     return () => {
       window.clearTimeout(timeout)
+      clearBusyTimer()
       unsubscribe()
     }
   }, [])
 
   const signInWithGoogle = async () => {
     setState((prev) => ({ ...prev, busy: true, error: null }))
+    // `signInWithPopup` does not always settle: a popup that the browser
+    // silently hides, or an extension that blocks the callback, leaves the
+    // promise pending forever and the button stuck on "Signing in…". This
+    // timer turns that into a message the organiser can act on.
+    clearBusyTimer()
+    busyTimer.current = window.setTimeout(() => {
+      busyTimer.current = null
+      setState((prev) =>
+        prev.busy
+          ? {
+              ...prev,
+              busy: false,
+              error: 'Sign-in is taking too long. Close the Google window and try again.',
+            }
+          : prev,
+      )
+    }, 60_000)
+
     const provider = new GoogleAuthProvider()
     try {
       await signInWithPopup(auth, provider, browserPopupRedirectResolver)
@@ -92,11 +119,13 @@ export function useAuth() {
         setState((prev) => ({ ...prev, error: toMessage(error) }))
       }
     } finally {
+      clearBusyTimer()
       setState((prev) => ({ ...prev, busy: false }))
     }
   }
 
   const signOutUser = async () => {
+    clearBusyTimer()
     setState((prev) => ({ ...prev, error: null }))
     try {
       await signOut(auth)

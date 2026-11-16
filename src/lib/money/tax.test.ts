@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BPS_DENOMINATOR, calcTaxPaise, isBps } from './tax'
+import { BPS_DENOMINATOR, calcTaxPaise, isBps, parsePercentToBps } from './tax'
 
 describe('calcTaxPaise', () => {
   it('computes the GST and service charge amounts from TESTCASES §2', () => {
@@ -61,5 +61,33 @@ describe('isBps', () => {
     expect(isBps(1.5)).toBe(false)
     expect(isBps('1800')).toBe(false)
     expect(isBps(Number.NaN)).toBe(false)
+  })
+})
+
+describe('parsePercentToBps', () => {
+  it('parses whole percentages into basis points', () => {
+    expect(parsePercentToBps('18')).toBe(1800)
+    expect(parsePercentToBps('10')).toBe(1000)
+    expect(parsePercentToBps('0')).toBe(0)
+    expect(parsePercentToBps('100')).toBe(BPS_DENOMINATOR)
+  })
+
+  it('parses up to two decimal places exactly, without a float', () => {
+    expect(parsePercentToBps('18.5')).toBe(1850)
+    expect(parsePercentToBps('18.55')).toBe(1855)
+    expect(parsePercentToBps('0.01')).toBe(1)
+    expect(parsePercentToBps(' 5 ')).toBe(500)
+  })
+
+  it('rejects more than two decimals rather than rounding', () => {
+    expect(parsePercentToBps('18.555')).toBeNull()
+  })
+
+  it('rejects negatives, values above 100% and non-numbers', () => {
+    expect(parsePercentToBps('-1')).toBeNull()
+    expect(parsePercentToBps('100.01')).toBeNull()
+    expect(parsePercentToBps('')).toBeNull()
+    expect(parsePercentToBps('abc')).toBeNull()
+    expect(parsePercentToBps('.')).toBeNull()
   })
 })

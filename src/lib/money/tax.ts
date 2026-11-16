@@ -5,6 +5,8 @@
  * integer-only: no amount ever passes through a float.
  */
 
+import { parsePaise } from './paise'
+
 /** Basis points in one percent. */
 export const BPS_PER_PERCENT = 100
 
@@ -42,4 +44,21 @@ export function calcTaxPaise(basePaise: number, bps: number): number {
 
   const numerator = BigInt(basePaise) * BigInt(bps) + 5_000n
   return Number(numerator / BigInt(BPS_DENOMINATOR))
+}
+
+/**
+ * Parses a percentage typed by the organiser into basis points.
+ *
+ * 1% is 100 bps and 1 rupee is 100 paise, so the decimal handling is exactly
+ * the same operation as `parsePaise` — but the two are kept separate in the
+ * public API so a rupee amount can never be passed where a percentage belongs.
+ *
+ * Returns `null` for anything that is not an exact 0–100% value with at most
+ * two decimal places. Negative percentages and values above 100% are rejected
+ * rather than clamped.
+ */
+export function parsePercentToBps(input: string): number | null {
+  const bps = parsePaise(input)
+  if (bps === null || bps < 0 || bps > BPS_DENOMINATOR) return null
+  return bps
 }

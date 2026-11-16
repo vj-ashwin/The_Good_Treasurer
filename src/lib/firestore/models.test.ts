@@ -6,6 +6,7 @@ import {
   TRIP_NAME_MAX,
   ValidationError,
   parsePerson,
+  parseHistoryEntry,
   parseTrip,
   requireName,
 } from './models'
@@ -91,5 +92,66 @@ describe('parsePerson', () => {
     expect(() =>
       parsePerson('person-1', personData({ name: 'x'.repeat(PERSON_NAME_MAX + 1) })),
     ).toThrow(DataError)
+  })
+})
+
+const historyData = (overrides: Record<string, unknown> = {}) => ({
+  expenseId: '8f14e45f-ceea-4a7f-9b2a-1d0a3f4c5b6d',
+  action: 'delete',
+  authorId: 'user-1',
+  timestamp: created,
+  changedFields: ['deletedAt'],
+  before: { deletedAt: null },
+  after: { deletedAt: created },
+  ...overrides,
+})
+
+describe('parseHistoryEntry', () => {
+  it('parses a changelog entry and converts its timestamp', () => {
+    expect(parseHistoryEntry('entry-1', historyData())).toEqual({
+      id: 'entry-1',
+      expenseId: '8f14e45f-ceea-4a7f-9b2a-1d0a3f4c5b6d',
+      action: 'delete',
+      authorId: 'user-1',
+      timestamp: 1_700_000_000_000,
+      changedFields: ['deletedAt'],
+      before: { deletedAt: null },
+      after: { deletedAt: created },
+    })
+  })
+
+  it('reads all four actions', () => {
+    for (const action of ['create', 'update', 'delete', 'restore']) {
+      expect(parseHistoryEntry('entry-1', historyData({ action })).action).toBe(action)
+    }
+  })
+
+  it('reads an unsynced serverTimestamp as 0', () => {
+    expect(parseHistoryEntry('entry-1', historyData({ timestamp: null })).timestamp).toBe(0)
+  })
+
+  it('accepts null before/after snapshots (create has no before)', () => {
+    const entry = parseHistoryEntry('entry-1', historyData({ action: 'create', before: null }))
+    expect(entry.before).toBeNull()
+  })
+
+  it('rejects unknown actions, empty ids and malformed snapshots', () => {
+    expect(() => parseHistoryEntry('entry-1', historyData({ action: 'archive' }))).toThrow(DataError)
+    expect(() => parseHistoryEntry('entry-1', historyData({ expenseId: '' }))).toThrow(DataError)
+    expect(() => parseHistoryEntry('entry-1', historyData({ authorId: '' }))).toThrow(DataError)
+    expect(() => parseHistoryEntry('entry-1', historyData({ before: [] }))).toThrow(DataError)
+    expect(() => parseHistoryEntry('entry-1', undefined)).toThrow(DataError)
+  })
+
+  it('rejects a changedFields list that is not a unique list of names', () => {
+    expect(() => parseHistoryEntry('entry-1', historyData({ changedFields: 'deletedAt' }))).toThrow(
+      DataError,
+    )
+    expect(() =>
+      parseHistoryEntry('entry-1', historyData({ changedFields: ['deletedAt', 'deletedAt'] })),
+    ).toThrow(DataError)
+    expect(() => parseHistoryEntry('entry-1', historyData({ changedFields: [''] }))).toThrow(
+      DataError,
+    )
   })
 })

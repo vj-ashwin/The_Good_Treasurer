@@ -97,7 +97,16 @@ export async function createTripWithPeople(
     })
   })
 
-  await batch.commit()
+  try {
+    await batch.commit()
+  } catch (error) {
+    // A lost response means the trip (and its first people) are already
+    // committed. Re-running a create with fresh server timestamps would be
+    // rejected by the immutable-timestamp rules, so confirm before failing.
+    const existing = await getDoc(doc(db, tripPath(uid, tripId)))
+    if (existing.exists()) return { id: tripId, personIds }
+    throw error
+  }
   return { id: tripId, personIds }
 }
 

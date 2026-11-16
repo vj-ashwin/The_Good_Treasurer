@@ -2,10 +2,15 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTrip } from '../hooks/useTrip'
+import { usePeople } from '../hooks/usePeople'
+import { useExpenses } from '../hooks/useExpenses'
 import AppShell from '../components/AppShell'
 import ErrorNotice from '../components/ErrorNotice'
+import ExpensesPanel from '../components/ExpensesPanel'
+import HistoryPanel from '../components/HistoryPanel'
 import PeoplePanel from '../components/PeoplePanel'
-import { ChartIcon, ReceiptIcon, UsersIcon } from '../components/icons'
+import ReportPanel from '../components/ReportPanel'
+import { ChartIcon, ClockIcon, ReceiptIcon, UsersIcon } from '../components/icons'
 import { formatTimestamp } from '../lib/format'
 import { isUuid } from '../lib/firestore'
 import { ROUTES } from '../routes'
@@ -14,6 +19,7 @@ const TABS = [
   { id: 'expenses', label: 'Expenses', Icon: ReceiptIcon },
   { id: 'people', label: 'People', Icon: UsersIcon },
   { id: 'report', label: 'Report', Icon: ChartIcon },
+  { id: 'history', label: 'History', Icon: ClockIcon },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -39,6 +45,14 @@ export default function TripDetailPage() {
 
 function TripView({ uid, tripId }: { uid: string; tripId: string }) {
   const { trip, loading, notFound, error } = useTrip(uid, tripId)
+  const { people, loading: peopleLoading } = usePeople(uid, tripId)
+  // One subscription for the whole page: switching tabs must not unmount the
+  // listener and show a skeleton again.
+  const {
+    expenses,
+    loading: expensesLoading,
+    error: expensesError,
+  } = useExpenses(uid, tripId)
   const [tab, setTab] = useState<TabId>('expenses')
 
   if (loading) return <TripSkeleton />
@@ -100,34 +114,33 @@ function TripView({ uid, tripId }: { uid: string; tripId: string }) {
         aria-labelledby={`tab-${tab}`}
         className="mt-5"
       >
-        {tab === 'expenses' ? <ExpensesPlaceholder /> : null}
+        {tab === 'expenses' ? (
+          <ExpensesPanel
+            uid={uid}
+            tripId={tripId}
+            people={people}
+            expenses={expenses}
+            loading={expensesLoading}
+            error={expensesError}
+          />
+        ) : null}
         {tab === 'people' ? <PeoplePanel uid={uid} tripId={tripId} /> : null}
-        {tab === 'report' ? <ReportPlaceholder /> : null}
+        {tab === 'report' ? (
+          <ReportPanel
+            uid={uid}
+            tripId={tripId}
+            trip={trip}
+            people={people}
+            peopleLoading={peopleLoading}
+            expenses={expenses}
+            loading={expensesLoading}
+            error={expensesError}
+          />
+        ) : null}
+        {tab === 'history' ? (
+          <HistoryPanel uid={uid} tripId={tripId} expenses={expenses} />
+        ) : null}
       </div>
-    </div>
-  )
-}
-
-function ExpensesPlaceholder() {
-  return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-      <ReceiptIcon className="mx-auto h-6 w-6 text-slate-300" />
-      <p className="mt-2 text-sm font-medium text-slate-700">No expenses yet</p>
-      <p className="mt-1 text-sm text-slate-500">
-        Expenses recorded for this trip will appear here with their split.
-      </p>
-    </div>
-  )
-}
-
-function ReportPlaceholder() {
-  return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-      <ChartIcon className="mx-auto h-6 w-6 text-slate-300" />
-      <p className="mt-2 text-sm font-medium text-slate-700">No report yet</p>
-      <p className="mt-1 text-sm text-slate-500">
-        The settlement report will appear once this trip has expenses.
-      </p>
     </div>
   )
 }
