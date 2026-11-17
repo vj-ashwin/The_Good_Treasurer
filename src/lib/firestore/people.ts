@@ -22,6 +22,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   type Firestore,
   type Unsubscribe,
@@ -69,6 +70,27 @@ export async function addPerson(
   }
 
   return { id }
+}
+
+/**
+ * Renames a person.
+ *
+ * Expenses reference people by id, never by name, so a rename touches only the
+ * person document. The rules keep `isOrganizer` and `createdAt` exactly as they
+ * are, which a partial update preserves.
+ */
+export async function renamePerson(
+  db: Firestore,
+  uid: string,
+  tripId: string,
+  personId: string,
+  nameInput: string,
+): Promise<void> {
+  const name = requireName(nameInput, PERSON_NAME_MAX, 'Person name')
+  await updateDoc(doc(db, peoplePath(uid, tripId), personId), {
+    name,
+    updatedAt: serverTimestamp(),
+  })
 }
 
 /**

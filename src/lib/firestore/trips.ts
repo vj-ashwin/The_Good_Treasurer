@@ -18,6 +18,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   writeBatch,
   type Firestore,
   type Unsubscribe,
@@ -118,6 +119,27 @@ export async function createTrip(
 ): Promise<CreatedTrip> {
   const { id } = await createTripWithPeople(db, uid, { name: nameInput })
   return { id }
+}
+
+/**
+ * Renames a trip.
+ *
+ * Only the name and a fresh `updatedAt` are sent: the rules pin `createdAt` to
+ * the document it already holds, so a partial update keeps the creation time
+ * untouched. The rename is a plain update, not a batch — nothing else on the
+ * trip document participates.
+ */
+export async function renameTrip(
+  db: Firestore,
+  uid: string,
+  tripId: string,
+  nameInput: string,
+): Promise<void> {
+  const name = requireName(nameInput, TRIP_NAME_MAX, 'Trip name')
+  await updateDoc(doc(db, tripPath(uid, tripId)), {
+    name,
+    updatedAt: serverTimestamp(),
+  })
 }
 
 /** Reads one trip, or `null` when it does not exist (or is not visible). */

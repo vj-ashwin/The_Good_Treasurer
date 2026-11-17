@@ -5,9 +5,21 @@
  * owns the configured, persistently cached instance the app passes in.
  */
 
-export { createTrip, createTripWithPeople, getTrip, watchTrips } from './trips'
+export {
+  createTrip,
+  createTripWithPeople,
+  getTrip,
+  renameTrip,
+  watchTrips,
+} from './trips'
 export type { CreatedTrip, NewTrip } from './trips'
-export { addPerson, watchPeople, deletePerson, personIsReferenced } from './people'
+export {
+  addPerson,
+  deletePerson,
+  personIsReferenced,
+  renamePerson,
+  watchPeople,
+} from './people'
 export type { CreatedPerson, NewPerson } from './people'
 export {
   createExpense,

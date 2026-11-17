@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { db } from '../lib/firebase'
 import { describeError, getTrip, type Trip } from '../lib/firestore'
 
@@ -7,6 +7,8 @@ export interface TripState {
   loading: boolean
   notFound: boolean
   error: string | null
+  /** Re-runs the one-shot read; used after an in-place rename. */
+  refresh: () => void
 }
 
 interface Stored {
@@ -22,11 +24,15 @@ const INITIAL: Stored = { key: null, trip: null, notFound: false, error: null }
 /**
  * One trip, read once when the page opens.
  *
- * A single read rather than a listener: nothing on the trip document changes
- * after creation, and `getDoc` serves the cached copy when offline.
+ * A single read rather than a listener: the trip document is effectively
+ * immutable apart from its name, and `getDoc` serves the cached copy when
+ * offline. A rename calls `refresh()` to pick up the new name while the
+ * current trip keeps rendering until the read lands (no skeleton flash).
  */
 export function useTrip(uid: string | null, tripId: string | null): TripState {
   const [stored, setStored] = useState<Stored>(INITIAL)
+  const [reloadKey, setReloadKey] = useState(0)
+  const refresh = useCallback(() => setReloadKey((key) => key + 1), [])
 
   useEffect(() => {
     if (!uid || !tripId) return
@@ -47,10 +53,10 @@ export function useTrip(uid: string | null, tripId: string | null): TripState {
     return () => {
       cancelled = true
     }
-  }, [uid, tripId])
+  }, [uid, tripId, reloadKey])
 
   if (!uid || !tripId) {
-    return { trip: null, loading: false, notFound: false, error: null }
+    return { trip: null, loading: false, notFound: false, error: null, refresh }
   }
 
   const loading = stored.key !== `${uid}/${tripId}`
@@ -59,5 +65,6 @@ export function useTrip(uid: string | null, tripId: string | null): TripState {
     loading,
     notFound: loading ? false : stored.notFound,
     error: loading ? null : stored.error,
+    refresh,
   }
 }

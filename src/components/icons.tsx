@@ -81,6 +81,40 @@ export function MoonIcon({ className = 'h-5 w-5' }: IconProps) {
   )
 }
 
+export function PencilIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M17 3.5a2.1 2.1 0 0 1 3 3L8.5 18 4 19.5 5.5 15z" />
+    </svg>
+  )
+}
+
+export function CheckIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M4.5 12.5 10 18 19.5 6.5" />
+    </svg>
+  )
+}
+
 export function LuggageIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
     <svg
