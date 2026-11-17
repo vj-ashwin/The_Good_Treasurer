@@ -77,7 +77,7 @@ export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: stri
 
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-card p-4 shadow-sm sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <UsersIcon className="h-4 w-4 text-slate-400" />
@@ -88,7 +88,7 @@ export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: stri
           </span>
         </div>
 
-        <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex gap-2">
+        <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-2 sm:flex-row">
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -96,14 +96,14 @@ export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: stri
             placeholder="Add a person"
             aria-label="Person name"
             autoComplete="off"
-            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+            className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
           />
           <button
             type="submit"
             // While the first snapshot is in flight the list looks empty, so
             // adding here would wrongly mark the new person as organiser.
             disabled={busy || loading}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
           >
             <PlusIcon className="h-3.5 w-3.5" />
             Add
@@ -130,7 +130,7 @@ export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: stri
       ) : null}
 
       {!loading && people.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-card px-6 py-10 text-center">
           <UsersIcon className="mx-auto h-6 w-6 text-slate-300" />
           <p className="mt-2 text-sm font-medium text-slate-700">No people yet</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -140,17 +140,17 @@ export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: stri
       ) : null}
 
       {people.length > 0 ? (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-card shadow-sm">
           {people.map((person) => (
-            <li key={person.id} className="flex items-center gap-3 px-5 py-3.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">
+            <li key={person.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700 dark:text-brand-100">
                 {initials(person.name)}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+              <span className="min-w-0 flex-1 break-words text-sm font-medium text-slate-800">
                 {person.name}
               </span>
               {person.isOrganizer ? (
-                <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 dark:text-brand-100">
                   Organiser
                 </span>
               ) : null}
@@ -158,7 +158,7 @@ export default function PeoplePanel({ uid, tripId }: { uid: string; tripId: stri
                 type="button"
                 onClick={() => void handleRemove(person.id)}
                 disabled={pendingId === person.id}
-                className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-slate-300 bg-card px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {pendingId === person.id ? 'Removing…' : 'Remove'}
               </button>

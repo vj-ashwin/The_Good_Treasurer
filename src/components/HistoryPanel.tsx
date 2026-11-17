@@ -25,7 +25,7 @@ const ACTION_TONE: Record<HistoryAction, string> = {
   create: 'bg-emerald-100 text-emerald-800',
   update: 'bg-slate-100 text-slate-700',
   delete: 'bg-amber-100 text-amber-800',
-  restore: 'bg-brand-50 text-brand-700',
+  restore: 'bg-brand-50 text-brand-700 dark:text-brand-100',
 }
 
 /** The title recorded with the entry, so a vanished expense still has a name. */
@@ -108,7 +108,7 @@ export default function HistoryPanel({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-card p-4 shadow-sm sm:p-5">
         <h2 className="text-base font-semibold text-slate-900">History</h2>
         <p className="mt-0.5 text-sm text-slate-500">
           Every change recorded for this trip, newest first. Entries cannot be edited or removed.
@@ -126,7 +126,7 @@ export default function HistoryPanel({
       ) : null}
 
       {!loading && entries.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-card px-6 py-12 text-center">
           <ClockIcon className="mx-auto h-6 w-6 text-slate-300" />
           <p className="mt-2 text-sm font-medium text-slate-700">Nothing recorded yet</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -136,7 +136,7 @@ export default function HistoryPanel({
       ) : null}
 
       {entries.length > 0 ? (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-card shadow-sm">
           {entries.map((entry) => {
             const expense = byId.get(entry.expenseId)
             const title = expense?.title ?? snapshotTitle(entry) ?? 'Removed expense'
@@ -155,8 +155,8 @@ export default function HistoryPanel({
             const busy = pendingId === entry.id
 
             return (
-              <li key={entry.id} className="px-5 py-4">
-                <div className="flex items-start justify-between gap-3">
+              <li key={entry.id} className="px-4 py-4 sm:px-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
@@ -164,7 +164,7 @@ export default function HistoryPanel({
                       >
                         {ACTION_LABEL[entry.action]}
                       </span>
-                      <p className="truncate text-sm font-semibold text-slate-900">{title}</p>
+                      <p className="break-words text-sm font-semibold text-slate-900">{title}</p>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
                       {formatTimestamp(entry.timestamp)} · {describeChange(entry)}
@@ -175,7 +175,7 @@ export default function HistoryPanel({
                       type="button"
                       onClick={() => void handleRestore(entry)}
                       disabled={busy}
-                      className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-card px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {busy ? 'Restoring…' : 'Restore'}
                     </button>
@@ -185,7 +185,7 @@ export default function HistoryPanel({
                       type="button"
                       onClick={() => void handleUndo(entry)}
                       disabled={busy}
-                      className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-card px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {busy ? 'Undoing…' : 'Undo edit'}
                     </button>

@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Class-based dark mode: `dark:` utilities activate under <html class="dark">,
+   which is set by the inline script in index.html before first paint and kept
+   in sync by src/hooks/useTheme.ts. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans:
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -14,6 +19,61 @@
   --color-brand-700: #1a32d4;
   --color-brand-800: #1c2cae;
   --color-brand-900: #1c2b8a;
+
+  /* Card surface. bg-white stays untouched (it is also text-white on primary
+     buttons); components use bg-card so both themes resolve one token. */
+  --color-card: #ffffff;
+}
+
+/*
+ * Dark palette. Only the slate scale, the selected-state brand tones and the
+ * card token are re-mapped, so every existing slate/white class themes without
+ * sprinkling dark: on each element. Light-only accents (amber warnings, red
+ * notices, the report "paper" area) intentionally stay light for contrast.
+ */
+.dark {
+  color-scheme: dark;
+
+  --color-card: #111b2e;
+
+  --color-slate-50: #0b1220;
+  --color-slate-100: #1a2332;
+  --color-slate-200: #2b3648;
+  --color-slate-300: #3d4a5f;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #8b9bb4;
+  --color-slate-600: #c2cede;
+  --color-slate-700: #dbe3ee;
+  --color-slate-800: #edf1f7;
+  --color-slate-900: #f7f9fc;
+
+  --color-brand-50: #16255c;
+  --color-brand-800: #a9bcff;
+}
+
+/*
+ * The settlement report is captured by the PNG export and rendered as a
+ * shared "paper" document: it always stays light, even in dark mode. Adding
+ * .light-scope restores the light token values inside that subtree.
+ */
+.light-scope {
+  color-scheme: light;
+
+  --color-card: #ffffff;
+
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+
+  --color-brand-50: #eef4ff;
+  --color-brand-800: #1c2cae;
 }
 
 @layer base {

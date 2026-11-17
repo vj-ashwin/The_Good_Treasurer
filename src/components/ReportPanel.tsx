@@ -133,9 +133,9 @@ export default function ReportPanel({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+      <section className="rounded-2xl border border-slate-200 bg-card p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <h2 className="text-base font-semibold text-slate-900">Settlement report</h2>
             <p className="mt-0.5 text-sm text-slate-500">
               Recalculates from the live expenses. Nothing is locked.
@@ -148,7 +148,7 @@ export default function ReportPanel({
                 value={pngScope}
                 onChange={(event) => setPngScope(event.target.value as PngScope)}
                 disabled={busy !== null}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none disabled:opacity-60"
+                className="min-h-11 rounded-lg border border-slate-300 bg-card px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none disabled:opacity-60"
               >
                 <option value="full">Full report</option>
                 <option value="visible">Visible area</option>
@@ -158,7 +158,7 @@ export default function ReportPanel({
               type="button"
               onClick={() => void handlePdf()}
               disabled={!canExport || busy !== null}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             >
               <DownloadIcon className="h-3.5 w-3.5" />
               {busy === 'pdf' ? 'Preparing…' : 'PDF'}
@@ -167,7 +167,7 @@ export default function ReportPanel({
               type="button"
               onClick={() => void handlePng()}
               disabled={!canExport || busy !== null}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-card px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             >
               <DownloadIcon className="h-3.5 w-3.5" />
               {busy === 'png' ? 'Preparing…' : 'PNG'}
@@ -176,7 +176,7 @@ export default function ReportPanel({
               type="button"
               onClick={() => void handleBackup()}
               disabled={!canBackup || busy !== null}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-card px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             >
               <DownloadIcon className="h-3.5 w-3.5" />
               {busy === 'backup' ? 'Preparing…' : 'JSON backup'}
@@ -197,7 +197,7 @@ export default function ReportPanel({
       ) : null}
 
       {!loading && liveExpenses.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-card px-6 py-12 text-center">
           <ChartIcon className="mx-auto h-6 w-6 text-slate-300" />
           <p className="mt-2 text-sm font-medium text-slate-700">No report yet</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -206,8 +206,10 @@ export default function ReportPanel({
         </div>
       ) : null}
 
+      {/* Always a light "paper" document: PNG/PDF exports stay consistent even
+          in dark mode. .light-scope restores the light palette inside it. */}
       {!loading && liveExpenses.length > 0 ? (
-        <div ref={contentRef} className="space-y-5 bg-white">
+        <div ref={contentRef} className="light-scope space-y-5 bg-white">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold tracking-wide text-brand-600 uppercase">
               The Good Treasurer

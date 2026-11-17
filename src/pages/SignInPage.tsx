@@ -1,6 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 import { ROUTES } from '../routes'
+import { MoonIcon, SunIcon } from '../components/icons'
 
 /**
  * Google sign-in. Renders the login card when signed out; when already signed
@@ -8,6 +10,7 @@ import { ROUTES } from '../routes'
  */
 export default function SignInPage() {
   const { user, loading, busy, error, signInWithGoogle } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from ?? ROUTES.HOME
 
@@ -15,9 +18,19 @@ export default function SignInPage() {
   if (user) return <Navigate to={from} replace />
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
+    <main className="relative flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-12">
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+      >
+        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        <span className="sr-only">
+          {theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        </span>
+      </button>
       <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/60">
+        <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-xl shadow-slate-200/60 dark:shadow-none sm:p-8">
           <div className="flex flex-col items-center text-center">
             <BrandMark className="h-14 w-14" />
             <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900">
@@ -42,7 +55,7 @@ export default function SignInPage() {
             type="button"
             onClick={signInWithGoogle}
             disabled={busy}
-            className="mt-8 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-8 flex min-h-11 w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-card px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
           >
             <GoogleIcon />
             {busy ? 'Signing in…' : 'Sign in with Google'}
@@ -59,7 +72,7 @@ export default function SignInPage() {
 
 function AuthSplash() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50">
+    <main className="flex min-h-dvh items-center justify-center bg-slate-50">
       <div className="flex items-center gap-3 text-sm text-slate-500">
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />
         Loading…

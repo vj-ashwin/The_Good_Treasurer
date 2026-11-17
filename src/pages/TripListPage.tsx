@@ -12,7 +12,7 @@ export default function TripListPage() {
     <AppShell user={user} onSignOut={signOutUser}>
       {(openCreateTrip) => (
         <div className="mx-auto max-w-3xl">
-          <p className="text-xs font-semibold tracking-wide text-brand-600 uppercase">
+          <p className="mt-2 text-xs font-semibold tracking-wide text-brand-600 uppercase dark:text-brand-300">
             Trip ledger
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
@@ -23,7 +23,7 @@ export default function TripListPage() {
             newest first and keeps working from this device when you are offline.
           </p>
 
-          <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="mt-8 rounded-2xl border border-slate-200 bg-card p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
                 <LuggageIcon className="h-5 w-5" />

@@ -32,8 +32,8 @@ export default class ErrorBoundary extends Component<
     if (message === null) return this.props.children
 
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-        <div role="alert" className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-8 shadow-sm">
+      <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-12">
+        <div role="alert" className="w-full max-w-lg rounded-2xl border border-red-200 bg-card p-8 shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900">Something went wrong</h1>
           <p className="mt-3 text-sm leading-relaxed text-slate-600">
             The page could not be displayed. Your saved trips are unaffected.

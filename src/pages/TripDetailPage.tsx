@@ -70,7 +70,7 @@ function TripView({ uid, tripId }: { uid: string; tripId: string }) {
   return (
     <div className="mx-auto max-w-3xl">
       <header>
-        <p className="text-xs font-semibold tracking-wide text-brand-600 uppercase">Trip</p>
+        <p className="text-xs font-semibold tracking-wide text-brand-600 uppercase dark:text-brand-300">Trip</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           {trip.name}
         </h1>
@@ -82,7 +82,7 @@ function TripView({ uid, tripId }: { uid: string; tripId: string }) {
       <div
         role="tablist"
         aria-label="Trip sections"
-        className="mt-6 flex gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+        className="mt-6 grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-card p-1 shadow-sm sm:flex"
       >
         {TABS.map(({ id, label, Icon }) => {
           const selected = tab === id
@@ -95,9 +95,9 @@ function TripView({ uid, tripId }: { uid: string; tripId: string }) {
               aria-selected={selected}
               aria-controls={`panel-${id}`}
               onClick={() => setTab(id)}
-              className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none ${
+              className={`inline-flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none sm:px-3 ${
                 selected
-                  ? 'bg-brand-50 text-brand-700'
+                  ? 'bg-brand-50 text-brand-700 dark:text-brand-100'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
               }`}
             >
@@ -159,14 +159,14 @@ function TripSkeleton() {
 
 function TripNotFound() {
   return (
-    <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+    <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-card p-6 text-center shadow-sm sm:p-8">
       <p className="text-base font-semibold text-slate-900">Trip not found</p>
       <p className="mt-2 text-sm leading-relaxed text-slate-600">
         This trip does not exist, or it belongs to another account.
       </p>
       <Link
         to={ROUTES.HOME}
-        className="mt-6 inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none"
+        className="mt-6 inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-card px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none"
       >
         Back to trips
       </Link>

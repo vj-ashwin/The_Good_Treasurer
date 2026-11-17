@@ -134,10 +134,10 @@ export default function ExpensesPanel({
   }
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="space-y-5 pb-20 sm:pb-0">
+      <section className="rounded-2xl border border-slate-200 bg-card p-4 shadow-sm sm:p-5">
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-base font-semibold text-slate-900">Expenses</h2>
             <p className="mt-0.5 text-sm text-slate-500">
               Record what was paid and how it is split, in paise.
@@ -147,7 +147,7 @@ export default function ExpensesPanel({
             type="button"
             onClick={() => setDialog({ expense: null })}
             disabled={people.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            className="hidden items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:inline-flex"
           >
             <PlusIcon className="h-3.5 w-3.5" />
             Add expense
@@ -160,6 +160,17 @@ export default function ExpensesPanel({
         ) : null}
       </section>
 
+      {/* Extended floating action button: the primary mobile action. */}
+      <button
+        type="button"
+        onClick={() => setDialog({ expense: null })}
+        disabled={people.length === 0}
+        className="fixed bottom-6 right-4 z-30 inline-flex h-14 items-center gap-2 rounded-full bg-brand-600 px-5 text-base font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-300 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:hidden"
+      >
+        <PlusIcon className="h-5 w-5" />
+        Add expense
+      </button>
+
       {error ? <ErrorNotice message={error} /> : null}
       {actionError ? <ErrorNotice message={actionError} /> : null}
 
@@ -171,7 +182,7 @@ export default function ExpensesPanel({
       ) : null}
 
       {!loading && expenses.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-card px-6 py-12 text-center">
           <ReceiptIcon className="mx-auto h-6 w-6 text-slate-300" />
           <p className="mt-2 text-sm font-medium text-slate-700">No expenses yet</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -193,7 +204,7 @@ export default function ExpensesPanel({
       ) : null}
 
       {expenses.length > 0 ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-card p-4 shadow-sm">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block text-xs font-medium text-slate-600">
               Search
@@ -201,7 +212,7 @@ export default function ExpensesPanel({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Title or category"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
               />
             </label>
             <label className="block text-xs font-medium text-slate-600">
@@ -209,7 +220,7 @@ export default function ExpensesPanel({
               <select
                 value={sort}
                 onChange={(event) => setSort(event.target.value as ExpenseSort)}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
               >
                 {(Object.keys(EXPENSE_SORT_LABELS) as ExpenseSort[]).map((value) => (
                   <option key={value} value={value}>
@@ -223,7 +234,7 @@ export default function ExpensesPanel({
               <select
                 value={categoryFilter}
                 onChange={(event) => setCategoryFilter(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
               >
                 <option value="">All categories</option>
                 {categories.map((value) => (
@@ -238,7 +249,7 @@ export default function ExpensesPanel({
               <select
                 value={payerFilter}
                 onChange={(event) => setPayerFilter(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
               >
                 <option value="">Anyone</option>
                 {people.map((person) => (
@@ -262,7 +273,7 @@ export default function ExpensesPanel({
       ) : null}
 
       {expenses.length > 0 && filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-card px-6 py-10 text-center">
           <p className="text-sm font-medium text-slate-700">No expenses match these filters</p>
           <button
             type="button"
@@ -317,16 +328,16 @@ function ExpenseList({
   onEdit: (expense: Expense) => void
 }) {
   return (
-    <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-card shadow-sm">
       {expenses.map((expense) => {
         const deleted = expense.deletedAt !== null
         const busy = pendingId === expense.id
         return (
-          <li key={expense.id} className={`px-5 py-4 ${deleted ? 'bg-slate-50' : ''}`}>
+          <li key={expense.id} className={`px-4 py-4 sm:px-5 ${deleted ? 'bg-slate-50' : ''}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p
-                  className={`truncate text-sm font-semibold ${
+                  className={`break-words text-sm font-semibold ${
                     deleted ? 'text-slate-500 line-through' : 'text-slate-900'
                   }`}
                 >
@@ -349,12 +360,12 @@ function ExpenseList({
                 <p className="mt-0.5 text-xs text-slate-500">
                   {expense.participants.length} participant(s)
                 </p>
-                <div className="mt-2 flex justify-end gap-2">
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
                   {deleted ? null : (
                     <button
                       type="button"
                       onClick={() => onEdit(expense)}
-                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                      className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-card px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none"
                     >
                       Edit
                     </button>
@@ -363,7 +374,7 @@ function ExpenseList({
                     type="button"
                     onClick={() => onTransition(expense)}
                     disabled={busy}
-                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-card px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {busy ? 'Working…' : deleted ? 'Restore' : 'Delete'}
                   </button>
@@ -889,10 +900,10 @@ function ExpenseDialog({
       }}
       aria-labelledby="expense-dialog-title"
       aria-describedby="expense-sum-check"
-      className="w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-900/40"
+      className="flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-2xl flex-col rounded-2xl border border-slate-200 bg-card p-0 text-slate-900 shadow-2xl backdrop:bg-slate-900/40"
     >
-      <form onSubmit={(event) => void handleSubmit(event)} noValidate>
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+      <form onSubmit={(event) => void handleSubmit(event)} noValidate className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
             <h2 id="expense-dialog-title" className="text-lg font-semibold tracking-tight">
               {dialogTitle}
@@ -902,14 +913,14 @@ function ExpenseDialog({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:ring-2 focus:ring-brand-500 focus:outline-none"
           >
             <CloseIcon />
             <span className="sr-only">Close</span>
           </button>
         </div>
 
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto px-5 py-5">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
           {submitError ? <ErrorNotice message={submitError} /> : null}
 
           {conflict ? (
@@ -924,7 +935,7 @@ function ExpenseDialog({
                   type="button"
                   onClick={() => void save(true)}
                   disabled={busy}
-                  className="rounded-lg bg-amber-800 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-900 disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center rounded-lg bg-amber-800 px-4 text-sm font-semibold text-white transition hover:bg-amber-900 disabled:opacity-60"
                 >
                   {busy ? 'Saving…' : 'Keep mine'}
                 </button>
@@ -932,7 +943,7 @@ function ExpenseDialog({
                   type="button"
                   onClick={keepSavedCopy}
                   disabled={busy}
-                  className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 transition hover:bg-amber-50 disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-medium text-amber-900 transition hover:bg-amber-50 disabled:opacity-60"
                 >
                   Use the saved copy
                 </button>
@@ -946,7 +957,7 @@ function ExpenseDialog({
               <input
                 value={form.title}
                 onChange={(event) => patch({ title: event.target.value })}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                 placeholder="Dinner"
                 autoComplete="off"
                 autoFocus
@@ -960,7 +971,7 @@ function ExpenseDialog({
                 value={form.date}
                 max={todayIso()}
                 onChange={(event) => patch({ date: event.target.value })}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
               />
             </label>
 
@@ -972,7 +983,7 @@ function ExpenseDialog({
                 list="expense-category-suggestions"
                 placeholder="Food"
                 autoComplete="off"
-                className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
               />
               <datalist id="expense-category-suggestions">
                 {categories.map((option) => (
@@ -986,7 +997,7 @@ function ExpenseDialog({
               <select
                 value={payerId}
                 onChange={(event) => patch({ payerId: event.target.value })}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
               >
                 {people.map((person) => (
                   <option key={person.id} value={person.id}>
@@ -1001,7 +1012,7 @@ function ExpenseDialog({
               <select
                 value={form.mode}
                 onChange={(event) => setMode(event.target.value as SplitMode)}
-                className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
               >
                 <option value="equal">Equal</option>
                 <option value="exact">Exact amounts</option>
@@ -1018,7 +1029,7 @@ function ExpenseDialog({
                 onChange={(event) => patch({ amount: event.target.value })}
                 inputMode="decimal"
                 placeholder="0.00"
-                className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:max-w-xs"
+                className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm sm:max-w-xs"
               />
             </label>
           ) : null}
@@ -1049,7 +1060,7 @@ function ExpenseDialog({
                       onChange={(event) => patch({ cgst: event.target.value })}
                       inputMode="decimal"
                       placeholder="0.00"
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                      className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                     />
                   </label>
                   <label className="block text-xs font-medium text-slate-600">
@@ -1059,7 +1070,7 @@ function ExpenseDialog({
                       onChange={(event) => patch({ sgst: event.target.value })}
                       inputMode="decimal"
                       placeholder="0.00"
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                      className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                     />
                   </label>
                   <label className="block text-xs font-medium text-slate-600">
@@ -1069,7 +1080,7 @@ function ExpenseDialog({
                       onChange={(event) => patch({ igst: event.target.value })}
                       inputMode="decimal"
                       placeholder="0.00"
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                      className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                     />
                   </label>
                 </div>
@@ -1122,7 +1133,7 @@ function ExpenseDialog({
                       onChange={(event) => updateLine(index, { description: event.target.value })}
                       placeholder={`Item ${String(index + 1)}`}
                       aria-label={`Line item ${String(index + 1)} description`}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                      className="rounded-lg border border-slate-300 bg-card px-3 py-2.5 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                     />
                     <input
                       value={line.amount}
@@ -1130,7 +1141,7 @@ function ExpenseDialog({
                       inputMode="decimal"
                       placeholder="₹ amount"
                       aria-label={`Line item ${String(index + 1)} amount`}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                      className="rounded-lg border border-slate-300 bg-card px-3 py-2.5 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                     />
                     <button
                       type="button"
@@ -1158,7 +1169,7 @@ function ExpenseDialog({
                         inputMode="decimal"
                         placeholder="Bill rate"
                         aria-label={`Line item ${String(index + 1)} GST percentage`}
-                        className="mt-1 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                        className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                       />
                     </label>
                     <label className="block text-xs font-medium text-slate-600">
@@ -1169,7 +1180,7 @@ function ExpenseDialog({
                         inputMode="decimal"
                         placeholder="Bill rate"
                         aria-label={`Line item ${String(index + 1)} service-charge percentage`}
-                        className="mt-1 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                        className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                       />
                     </label>
                   </div>
@@ -1244,7 +1255,7 @@ function ExpenseDialog({
                       }
                       inputMode="decimal"
                       placeholder="0.00"
-                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+                      className="mt-1 w-full rounded-lg border border-slate-300 bg-card px-3 py-2.5 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
                     />
                   </label>
                 ))}
@@ -1307,18 +1318,18 @@ function ExpenseDialog({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4">
+        <div className="flex shrink-0 flex-col gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-300 bg-card px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none sm:w-auto"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={busy || !preview.ok}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {busy ? 'Saving…' : expense ? 'Save changes' : 'Save expense'}
           </button>
@@ -1358,7 +1369,7 @@ function TaxFields({
           <select
             value={mode}
             onChange={(event) => onMode(event.target.value as TaxMode)}
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+            className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
           >
             <option value="none">No {label.toLowerCase()}</option>
             <option value="percent">Percentage</option>
@@ -1373,7 +1384,7 @@ function TaxFields({
               onChange={(event) => onPercent(event.target.value)}
               inputMode="decimal"
               placeholder={percentPlaceholder}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+              className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
             />
           </label>
         ) : mode === 'fixed' ? (
@@ -1384,7 +1395,7 @@ function TaxFields({
               onChange={(event) => onAmount(event.target.value)}
               inputMode="decimal"
               placeholder="0.00"
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none"
+              className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-base shadow-sm transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200 focus:outline-none sm:text-sm"
             />
           </label>
         ) : (

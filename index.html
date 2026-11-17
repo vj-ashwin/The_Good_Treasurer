@@ -11,6 +11,15 @@
       content="The Good Treasurer — a clean, private tracker for your personal expenses."
     />
     <title>The Good Treasurer</title>
+    <script>
+      // Apply the saved theme before first paint so there is no light flash.
+      try {
+        var t = localStorage.getItem('tgt-theme')
+        if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -6,8 +6,8 @@
  */
 export default function ConfigurationNotice() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-      <div className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-8 shadow-sm">
+    <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-12">
+      <div className="w-full max-w-lg rounded-2xl border border-amber-200 bg-card p-8 shadow-sm">
         <h1 className="text-xl font-semibold text-slate-900">Firebase is not configured</h1>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">
           The app could not read its Firebase settings. Add the following variables to a{' '}
